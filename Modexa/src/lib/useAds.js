@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase, supabaseConfigured } from './supabase'
 import { useSettings } from './useSettings'
 import { useConsent } from './consent'
+import { MONETAG_DEFAULTS, MONETAG_DIRECT_LINK, AUTO_AD_COPY } from './monetagDefaults'
 
 let state = { items: [], loaded: false }
 let started = false
@@ -59,4 +60,48 @@ export function useAdsRaw() {
   const [s, setS] = useState(state)
   useEffect(() => { listeners.add(setS); setS(state); load(); return () => { listeners.delete(setS) } }, [])
   return s.items
+}
+
+export function useAdsLoaded() {
+  const [s, setS] = useState(state)
+  useEffect(() => { listeners.add(setS); setS(state); load(); return () => { listeners.delete(setS) } }, [])
+  return s.loaded
+}
+
+// ---- Monetag: scripts + automatic direct-link cards -------------------------------------------------------
+// Uses what is saved in Admin → Ads → Monetag; if nothing is saved yet, the built-in Monetag codes are used.
+export function monetagFormats(s) {
+  const saved = Array.isArray(s.monetag_formats) ? s.monetag_formats.filter(f => f && String(f.code || '').trim()) : []
+  const old = String(s.monetag_code || '').trim()
+  const custom = saved.length > 0 || Boolean(old)
+  const list = custom ? [...(old ? [{ id: 'old', format: 'multitag', code: old, on: true }] : []), ...saved] : MONETAG_DEFAULTS
+  const on = list.filter(f => f.on !== false)
+  const link = list.find(f => f.format === 'smartlink')
+  const url = link ? (link.on !== false ? String(link.code).trim() : '') : MONETAG_DIRECT_LINK
+  return { scripts: on.filter(f => f.format !== 'smartlink').map(f => String(f.code).trim()), link: /^https?:\/\/\S+$/i.test(url) ? url : '' }
+}
+export function useMonetag() {
+  const s = useSettings(), consent = useConsent()
+  const allowed = Boolean(s.__loaded) && s.monetag_enabled !== false && (!s.ads_require_consent || consent === 'all')
+  const f = monetagFormats(s)
+  return { allowed, scripts: allowed ? f.scripts : [], link: allowed ? f.link : '' }
+}
+
+// A page (for example a blog post with "Show ads" switched off) can turn the automatic ads off for itself.
+let pageOff = false
+const offListeners = new Set()
+export function setPageAdsOff(v) { v = Boolean(v); if (pageOff === v) return; pageOff = v; offListeners.forEach(f => f(v)) }
+export function usePageAdsOff() {
+  const [v, setV] = useState(pageOff)
+  useEffect(() => { offListeners.add(setV); setV(pageOff); return () => { offListeners.delete(setV) } }, [])
+  return v
+}
+export function useSetPageAdsOff(off) { useEffect(() => { setPageAdsOff(off); return () => setPageAdsOff(false) }, [off]) }
+
+// Automatic in-content units (shown inside posts / mod descriptions when no unit is set up for that spot).
+export function useAutoUnits() {
+  const { link } = useMonetag()
+  const off = usePageAdsOff()
+  if (!link || off) return []
+  return [{ id: 'auto-direct', slot_key: 'auto-direct', name: 'Auto direct link', kind: 'direct_link', link_url: link, link_style: 'card', link_label: AUTO_AD_COPY[0].title, link_text: AUTO_AD_COPY[0].text, position_after: 3, repeat_every: 5, label: 'Advertisement' }]
 }

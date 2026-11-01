@@ -268,3 +268,7 @@ html[data-theme="dark"] .dl-snd{background:#1c1c1c;border-color:#333;color:#d1d5
 body{overscroll-behavior-x:none}
 /* speed: do not lay out or paint the footer until it is near the screen */
 .site-footer{content-visibility:auto;contain-intrinsic-size:auto 420px}
+
+/* automatic Monetag direct-link cards */
+.auto-ad-wrap{margin:16px auto 0}.auto-ad-wrap .ad-block{margin:0}.auto-ad-bottom{margin:28px auto 8px}
+.auto-ad .ad-direct-card{max-width:680px}

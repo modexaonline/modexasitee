@@ -6,7 +6,7 @@ import { getConsent, setConsent } from '../lib/consent'
 
 export default function CookieNotice() {
   const s = useSettings()
-  const ads = Boolean(s.ads_enabled && s.ads_require_consent)
+  const ads = Boolean(s.ads_require_consent && (s.ads_enabled || s.monetag_enabled !== false))
   const [show, setShow] = useState(false)
   useEffect(() => {
     try { setShow(ads ? !getConsent() : !localStorage.getItem('modexa-cookie-notice')) } catch {}

@@ -18,7 +18,7 @@ import { useModsState } from '../lib/useMods'
 import { usePostsState } from '../lib/usePosts'
 import { postHref } from '../lib/useSearchItems'
 import { useSettings } from '../lib/useSettings'
-import { useAdUnits } from '../lib/useAds'
+import { useAdUnits, useAutoUnits } from '../lib/useAds'
 import { slugify } from '../lib/format'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 
@@ -26,7 +26,7 @@ export default function DetailPage({ type = 'app', savedIds, onToggleSave }) {
   const { items: mods, loading } = useModsState(), { items: posts } = usePostsState(), { slug } = useParams(), settings = useSettings()
   const mod = mods.find(m => m.slug === slug)
   const ctx = { gameSlug: mod ? slugify(mod.game) : '' }
-  const all = useAdUnits('', ctx, { ignoreScope: true }), inContent = useAdUnits('blog_in_content', ctx)
+  const all = useAdUnits('', ctx, { ignoreScope: true }), inContent = useAdUnits('blog_in_content', ctx), autoU = useAutoUnits()
   if (loading && !mod) return <PageSkeleton/>
   const base = type === 'game' ? '/games' : '/apps', label = type === 'game' ? 'Games' : 'Apps'
   if (mod && (mod.type || 'app') !== type) return <Navigate to={mod.href} replace/>
@@ -67,7 +67,7 @@ export default function DetailPage({ type = 'app', savedIds, onToggleSave }) {
       </div>
       <div className="detail-layout">
         <div className="detail-main">
-          {body ? <ContentHtml content={body} ads={all} inContent={inContent} className="detail-body"/> : null}
+          {body ? <ContentHtml content={body} ads={all} inContent={inContent.length ? inContent : autoU} className="detail-body"/> : null}
           {mod.features?.length > 0 && <section className="detail-list"><h2>Features</h2><ul>{mod.features.map(f => <li key={f}><Check size={16}/>{f}</li>)}</ul></section>}
           {mod.requirements?.length > 0 && <section className="detail-list"><h2>Requirements</h2><ul>{mod.requirements.map(f => <li key={f}><Check size={16}/>{f}</li>)}</ul></section>}
           {mod.install?.length > 0 && <section className="detail-list"><h2>How to install</h2><ol>{mod.install.map(s => <li key={s}>{s}</li>)}</ol></section>}

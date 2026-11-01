@@ -14,7 +14,8 @@ import AdBlock from '../components/AdBlock'
 import {CardSkeletons,PageSkeleton} from '../components/Skeleton'
 import {readingTime} from '../lib/format'
 import {usePostsState} from '../lib/usePosts'
-import {useAdUnits} from '../lib/useAds'
+import {useAdUnits,useAutoUnits,useSetPageAdsOff} from '../lib/useAds'
+import AutoAd from '../components/AutoAd'
 import SeoContent from '../components/SeoContent'
 import FaqSection from '../components/FaqSection'
 import {LISTING} from '../content/seo'
@@ -41,7 +42,8 @@ export function BlogIndex({type='blog'}){
 export function BlogDetail({type='blog'}){
   const {slug}=useParams(),{items:posts,loading}=usePostsState(),{items:mods}=useModsState(),post=posts.find(p=>p.slug===slug)
   const ctx={postSlug:slug,gameSlug:post?.game_slug||''}
-  const topU=useAdUnits('blog_top',ctx),botU=useAdUnits('blog_bottom',ctx),inU=useAdUnits('blog_in_content',ctx),allU=useAdUnits('',ctx,{ignoreScope:true})
+  const topU=useAdUnits('blog_top',ctx),botU=useAdUnits('blog_bottom',ctx),inU=useAdUnits('blog_in_content',ctx),allU=useAdUnits('',ctx,{ignoreScope:true}),autoU=useAutoUnits()
+  useSetPageAdsOff(Boolean(post)&&post.ads_enabled===false)
   if(loading)return <PageSkeleton/>
   if(!post)return <div className="container not-found-page"><BookOpen size={30}/><h1>Article not found</h1><p>This article may have moved or no longer exists.</p><Link className="button button-primary" to={'/'+type}>Back to {NAMES[type].toLowerCase()}</Link></div>
   const realType=post.post_type==='guide'?'guide':'blog'
@@ -60,9 +62,9 @@ export function BlogDetail({type='blog'}){
     {post.cover_image&&<SafeImg className="blog-article-cover" src={post.cover_image}/>}
     {adsOn&&<AdBlock units={topU} className="ad-in-article"/>}
     {headings.length>2&&<nav className="article-toc" aria-label="On this page"><b>On this page</b>{headings.map(h=><a key={h} href={`#${headingSlug(h)}`}>{h}</a>)}</nav>}
-    <div className="blog-article-body"><ContentHtml content={post.content} ads={allU} inContent={inU} adsOn={adsOn}/></div>
+    <div className="blog-article-body"><ContentHtml content={post.content} ads={allU} inContent={inU.length?inU:autoU} adsOn={adsOn}/></div>
     <FaqSection faqs={faqs}/>
-    {adsOn&&<AdBlock units={botU} className="ad-in-article"/>}
+    {adsOn&&(botU.length?<AdBlock units={botU} className="ad-in-article"/>:<AutoAd slot="article-end"/>)}
     {related.length>0&&<section className="related-posts"><h2>{sameGame.length&&game?`More about ${game.title}`:'Keep reading'}</h2><div className="blog-list-grid">{related.map(p=><article className="blog-list-card" key={p.id}><Link to={postHref(p)} className="blog-list-image"><SafeImg src={p.cover_image} loading="lazy"/></Link><div className="blog-list-content"><div className="blog-list-meta"><span>{p.category||'Guide'}</span></div><Link to={postHref(p)}><h2>{p.title}</h2></Link></div></article>)}</div></section>}
   </article></>
 }

@@ -13,10 +13,10 @@ export function useSettings() {
     const fn = v => alive && setS(v); listeners.add(fn)
     if (cache) setS(cache)
     else {
-      inflight = inflight || supabase.from('site_settings').select('*').eq('id', 1).maybeSingle().then(({ data }) => { cache = { ...defaultSettings, ...(data || {}) }; listeners.forEach(f => f(cache)) })
+      inflight = inflight || supabase.from('site_settings').select('*').eq('id', 1).maybeSingle().then(({ data }) => { cache = { ...defaultSettings, ...(data || {}), __loaded: true }; listeners.forEach(f => f(cache)) })
     }
     return () => { alive = false; listeners.delete(fn) }
   }, [])
   return s
 }
-export function setSettingsCache(v) { cache = { ...defaultSettings, ...v }; listeners.forEach(f => f(cache)) }
+export function setSettingsCache(v) { cache = { ...defaultSettings, ...(cache || {}), ...v, __loaded: true }; listeners.forEach(f => f(cache)) }
