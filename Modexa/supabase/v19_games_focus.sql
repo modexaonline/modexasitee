@@ -1,0 +1,4 @@
+-- Modexa v19 (ALREADY APPLIED to project modexa): games-only launch.
+-- * Apps page hidden:      site_content('visibility') = {"hidden":["/apps"]}  (Admin → Website editor → Pages → Apps → Unhide to bring it back)
+-- * 8 game guides + 1 sample blog (noindex, not in sitemap) inserted into public.posts
+-- * 8 guide URLs added to site_settings.sitemap_xml, tagline set to the games wording
