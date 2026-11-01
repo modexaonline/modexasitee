@@ -9,10 +9,12 @@ import { usePageContent, useHiddenPaths } from '../lib/siteContent'
 import { isPathHidden } from '../lib/hidden'
 import { NAV_DEFAULT } from '../content/merge'
 import { openConsent } from '../lib/consent'
+import { useAdsControl } from '../lib/adsControl'
 
 export default function Footer() {
   const customPages = usePublicPages('show_in_footer')
-  const s = useSettings()
+  const s = useSettings(), ctl = useAdsControl()
+  const needsConsent = ctl.ready && (s.ads_enabled || s.monetag_enabled !== false) && (ctl.cards === 'accept' || ctl.scripts === 'accept')
   const hiddenPaths = useHiddenPaths()
   const nav0 = usePageContent('nav', NAV_DEFAULT)
   const nav = { ...nav0, footer: nav0.footer.map(g => ({ ...g, links: g.links.filter(l => !isPathHidden(hiddenPaths, l.to)) })) }
@@ -25,7 +27,7 @@ export default function Footer() {
       </div>
       {nav.footer.map((g, gi) => <div className="footer-column" key={g.title + gi}><h4>{g.title}</h4>{g.links.map(l => /^https?:/.test(l.to) ? <a key={l.to + l.label} href={l.to} target="_blank" rel="noopener noreferrer">{l.label}</a> : <Link key={l.to + l.label} to={l.to}>{l.label}</Link>)}{gi === nav.footer.length - 1 && customPages.map(page => <Link key={page.slug} to={`/page/${page.slug}`}>{page.title}</Link>)}</div>)}
     </div>
-    <div className="footer-bottom"><span>© {new Date().getFullYear()} {s.site_name || 'Modexa'}. All rights reserved.</span>{s.ads_require_consent && (s.ads_enabled || s.monetag_enabled !== false) && <button type="button" className="footer-link-btn" onClick={openConsent}>Cookie settings</button>}<span>Made for the love of games <Heart size={13} className="heart-icon" fill="currentColor"/></span></div>
+    <div className="footer-bottom"><span>© {new Date().getFullYear()} {s.site_name || 'Modexa'}. All rights reserved.</span>{needsConsent && <button type="button" className="footer-link-btn" onClick={openConsent}>Cookie settings</button>}<span>Made for the love of games <Heart size={13} className="heart-icon" fill="currentColor"/></span></div>
     {s.footer_text && <p className="disclaimer footer-extra">{s.footer_text}</p>}
   </footer>
 }

@@ -5,14 +5,14 @@ import { postscribe } from '../lib/postscribe'
 import AdUnit from './AdUnit'
 
 // Site-wide scripts (pop-under, social bar, ad-network loaders) + the sticky footer bar.
+// A page switched OFF (Admin → Page manager) only stops scripts from starting; scripts that already started cannot be unloaded safely.
 export default function GlobalAds() {
-  const head = useAdUnits('global_head'), body = useAdUnits('global_body'), sticky = useAdUnits('sticky_bottom')
+  const head = useAdUnits('global_head', {}, { ignorePageOff: true }), body = useAdUnits('global_body', {}, { ignorePageOff: true }), sticky = useAdUnits('sticky_bottom')
   const [hideSticky, setHideSticky] = useState(() => { try { return sessionStorage.getItem('modexa-sticky-closed') === '1' } catch { return false } })
   const mt = useMonetag(), pageOff = usePageAdsOff()
   const monetag = mt.scripts
   const monetagSig = monetag.join('\u0000')
   const loadedSig = useRef(''), holders = useRef([])
-  // A page with "Show ads" OFF only stops the scripts from starting; scripts that already started stay (they cannot be unloaded safely).
   useEffect(() => {
     if (!monetag.length || pageOff || loadedSig.current === monetagSig) return
     const go = () => {
@@ -28,16 +28,17 @@ export default function GlobalAds() {
   }, [monetagSig, pageOff])
   useEffect(() => () => { holders.current.forEach(h => h.remove()); holders.current = []; loadedSig.current = '' }, [monetagSig])
   const sig = [...head, ...body].map(u => u.id + ':' + (u.code || '').length).join('|')
+  const added = useRef([])
   useEffect(() => {
-    const added = []
+    if (pageOff) return
     const put = (units, parent) => units.forEach(u => {
       if (!u.code || document.querySelector(`[data-modexa-global="${u.id}"]`)) return
       const holder = document.createElement('div'); holder.setAttribute('data-modexa-global', u.id); holder.style.display = 'contents'
-      parent.appendChild(holder); postscribe(holder, u.code); added.push(holder)
+      parent.appendChild(holder); postscribe(holder, u.code); added.current.push(holder)
     })
     put(head, document.head); put(body, document.body)
-    return () => { added.forEach(n => n.remove()) }
-  }, [sig])
+  }, [sig, pageOff])
+  useEffect(() => () => { added.current.forEach(n => n.remove()); added.current = [] }, [sig])
   const unit = sticky[0]
   useEffect(() => { document.body.classList.toggle('has-sticky-ad', Boolean(unit) && !hideSticky); return () => document.body.classList.remove('has-sticky-ad') }, [unit, hideSticky])
   if (!unit || hideSticky) return null

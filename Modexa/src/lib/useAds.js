@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { supabase, supabaseConfigured } from './supabase'
 import { useSettings } from './useSettings'
 import { useConsent } from './consent'
+import { useAdsControl, consentOk, isPathAdsOff } from './adsControl'
 import { MONETAG_DEFAULTS, MONETAG_DIRECT_LINK, AUTO_AD_COPY } from './monetagDefaults'
 
 let state = { items: [], loaded: false }
@@ -23,20 +25,21 @@ export function useMediaQuery(q) {
   return m
 }
 
-// Ads are shown only when: master switch is ON, and (consent is not required OR the visitor accepted).
+// Manual ad units are shown only when the master switch is ON. Cookie rules (per kind) and per-page switches are applied in useAdUnits.
 export function useAdsAllowed() {
-  const s = useSettings(), consent = useConsent()
-  return Boolean(s.ads_enabled) && (!s.ads_require_consent || consent === 'all')
+  return Boolean(useSettings().ads_enabled)
 }
 
 export function useAdUnits(placement, ctx = {}, opts = {}) {
-  const allowed = useAdsAllowed()
+  const allowed = useAdsAllowed(), ctl = useAdsControl(), consent = useConsent(), pageOff = usePageAdsOff()
   const [s, setS] = useState(state)
   const desktop = useMediaQuery('(min-width: 768px)')
   useEffect(() => { if (!allowed) return; listeners.add(setS); setS(state); load(); return () => { listeners.delete(setS) } }, [allowed])
-  if (!allowed) return []
+  if (!allowed || !ctl.ready || (pageOff && !opts.ignorePageOff)) return []
+  const okScripts = consentOk(ctl.scripts, consent), okCards = consentOk(ctl.cards, consent)
   const { postSlug = '', gameSlug = '' } = ctx
   return s.items.filter(u => {
+    if (!(u.kind === 'direct_link' ? okCards : okScripts)) return false
     if (placement && u.placement !== placement) return false
     if (u.devices === 'desktop' && !desktop) return false
     if (u.devices === 'mobile' && desktop) return false
@@ -81,20 +84,21 @@ export function monetagFormats(s) {
   return { scripts: on.filter(f => f.format !== 'smartlink').map(f => String(f.code).trim()), link: /^https?:\/\/\S+$/i.test(url) ? url : '' }
 }
 export function useMonetag() {
-  const s = useSettings(), consent = useConsent()
-  const allowed = Boolean(s.__loaded) && s.monetag_enabled !== false && (!s.ads_require_consent || consent === 'all')
+  const s = useSettings(), consent = useConsent(), ctl = useAdsControl()
+  const allowed = ctl.ready && s.monetag_enabled !== false
   const f = monetagFormats(s)
-  return { allowed, scripts: allowed ? f.scripts : [], link: allowed ? f.link : '' }
+  return { allowed, scripts: allowed && consentOk(ctl.scripts, consent) ? f.scripts : [], link: allowed && consentOk(ctl.cards, consent) ? f.link : '' }
 }
 
-// A page (for example a blog post with "Show ads" switched off) can turn the automatic ads off for itself.
-let pageOff = false
+// Ads are OFF for a page when (a) Admin → Page manager has it switched off, or (b) it is a post with "Show ads on this post" unticked.
+let postOff = false
 const offListeners = new Set()
-export function setPageAdsOff(v) { v = Boolean(v); if (pageOff === v) return; pageOff = v; offListeners.forEach(f => f(v)) }
+export function setPageAdsOff(v) { v = Boolean(v); if (postOff === v) return; postOff = v; offListeners.forEach(f => f(v)) }
 export function usePageAdsOff() {
-  const [v, setV] = useState(pageOff)
-  useEffect(() => { offListeners.add(setV); setV(pageOff); return () => { offListeners.delete(setV) } }, [])
-  return v
+  const { pathname } = useLocation(), ctl = useAdsControl()
+  const [post, setPost] = useState(postOff)
+  useEffect(() => { offListeners.add(setPost); setPost(postOff); return () => { offListeners.delete(setPost) } }, [])
+  return post || (ctl.ready && isPathAdsOff(ctl.pagesOff, pathname))
 }
 export function useSetPageAdsOff(off) { useEffect(() => { setPageAdsOff(off); return () => setPageAdsOff(false) }, [off]) }
 
