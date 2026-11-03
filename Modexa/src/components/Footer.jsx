@@ -10,11 +10,12 @@ import { isPathHidden } from '../lib/hidden'
 import { NAV_DEFAULT } from '../content/merge'
 import { openConsent } from '../lib/consent'
 import { useAdsControl } from '../lib/adsControl'
+import { useAdNetworksOn } from '../lib/adsterra'
 
 export default function Footer() {
   const customPages = usePublicPages('show_in_footer')
-  const s = useSettings(), ctl = useAdsControl()
-  const needsConsent = ctl.ready && (s.ads_enabled || s.monetag_enabled !== false) && (ctl.cards === 'accept' || ctl.scripts === 'accept')
+  const s = useSettings(), ctl = useAdsControl(), nets = useAdNetworksOn()
+  const needsConsent = ctl.ready && nets.any && (ctl.cards === 'accept' || ctl.scripts === 'accept')
   const hiddenPaths = useHiddenPaths()
   const nav0 = usePageContent('nav', NAV_DEFAULT)
   const nav = { ...nav0, footer: nav0.footer.map(g => ({ ...g, links: g.links.filter(l => !isPathHidden(hiddenPaths, l.to)) })) }

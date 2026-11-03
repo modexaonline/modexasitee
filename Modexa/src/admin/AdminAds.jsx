@@ -7,6 +7,8 @@ import { setSettingsCache } from '../lib/useSettings'
 import AdUnit from '../components/AdUnit'
 import { Switch } from './fields'
 import MonetagCard from './MonetagCard'
+import AdsterraCard from './AdsterraCard'
+import AdNetworksCard from './AdNetworksCard'
 import './admin-extra.css'
 
 const BLANK = { name: '', slot_key: '', kind: 'banner', size: '300x250', custom_width: 300, custom_height: 250, render_mode: 'isolated', code: '', link_url: '', link_label: 'Learn more', link_text: '', link_style: 'button', placement: 'blog_in_content', position_after: 3, repeat_every: 0, devices: 'all', scope: 'all', target_slugs: [], exclude_slugs: [], label: 'Advertisement', priority: 0, status: 'active' }
@@ -153,12 +155,14 @@ export default function AdminAds({ onNotice, onError }) {
 
   return <div className="adm">
     <div className="adm-head"><div><h2>Ads manager</h2><p>Two ways to earn, use either or both: <b>Monetag Auto</b> (paste the script Monetag gives you and the ads appear by themselves) or <b>Manual ads</b> (you choose each ad, its size and where it shows).</p></div>{mode === 'manual' && <button className="adm-btn primary" onClick={() => setEditing({ ...BLANK })}><Plus size={16}/> New ad</button>}</div>
+    <AdNetworksCard master={master} saveMaster={saveMaster} onNotice={onNotice} onError={onError}/>
     <div className="adm-tabs" role="tablist" aria-label="Ads mode">
-      <button type="button" role="tab" aria-selected={mode === 'auto'} className={mode === 'auto' ? 'active' : ''} onClick={() => setMode('auto')}>Monetag Auto</button>
+      <button type="button" role="tab" aria-selected={mode === 'auto'} className={mode === 'auto' ? 'active' : ''} onClick={() => setMode('auto')}>Auto ads (Monetag · Adsterra)</button>
       <button type="button" role="tab" aria-selected={mode === 'manual'} className={mode === 'manual' ? 'active' : ''} onClick={() => setMode('manual')}>Manual ads{ads.length ? ` (${ads.length})` : ''}</button>
     </div>
     {mode === 'auto' && <>
       <MonetagCard onNotice={onNotice} onError={onError}/>
+      <AdsterraCard onNotice={onNotice} onError={onError}/>
       <section className="adm-card"><h3 style={{ margin: 0 }}>How Monetag Auto works</h3><ul className="adm-tip-list"><li>Paste the code from Monetag, save, and it is loaded on every page. Monetag decides where and when its ads show.</li><li>It does <b>not</b> need the “Show ads on the website” switch in Manual ads.</li><li>Want a banner in an exact spot (inside a blog, under a download button)? Use the <b>Manual ads</b> tab.</li></ul></section>
     </>}
     {mode === 'manual' && <>

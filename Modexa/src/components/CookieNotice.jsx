@@ -4,12 +4,13 @@ import { Cookie, X } from 'lucide-react'
 import { useSettings } from '../lib/useSettings'
 import { getConsent, setConsent } from '../lib/consent'
 import { useAdsControl } from '../lib/adsControl'
+import { useAdNetworksOn } from '../lib/adsterra'
 
 export default function CookieNotice() {
   const s = useSettings()
-  const ctl = useAdsControl()
+  const ctl = useAdsControl(), nets = useAdNetworksOn()
   // The banner is always shown when any ad kind needs the visitor's OK; otherwise Admin → Page manager decides.
-  const ads = Boolean(ctl.ready && (s.ads_enabled || s.monetag_enabled !== false) && (ctl.cards === 'accept' || ctl.scripts === 'accept'))
+  const ads = Boolean(ctl.ready && nets.any && (ctl.cards === 'accept' || ctl.scripts === 'accept'))
   const [show, setShow] = useState(false)
   useEffect(() => {
     if (!ctl.ready) return

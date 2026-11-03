@@ -4,6 +4,7 @@ import { supabase, supabaseConfigured } from './supabase'
 import { useSettings } from './useSettings'
 import { useConsent } from './consent'
 import { useAdsControl, consentOk, isPathAdsOff } from './adsControl'
+import { useAdsterra, BANNER_SIZES } from './adsterra'
 import { MONETAG_DEFAULTS, MONETAG_DIRECT_LINK, AUTO_AD_COPY } from './monetagDefaults'
 
 let state = { items: [], loaded: false }
@@ -102,10 +103,35 @@ export function usePageAdsOff() {
 }
 export function useSetPageAdsOff(off) { useEffect(() => { setPageAdsOff(off); return () => setPageAdsOff(false) }, [off]) }
 
-// Automatic in-content units (shown inside posts / mod descriptions when no unit is set up for that spot).
+// All direct links that may be shown as cards right now (Monetag + Adsterra, each only when its network is ON and cookie rules allow).
+export function useAutoLinks() {
+  const m = useMonetag(), a = useAdsterra()
+  return [m.link && { network: 'monetag', url: m.link }, a.link && { network: 'adsterra', url: a.link }].filter(Boolean)
+}
+
+const bannerUnit = (k, code) => { const [w, h] = BANNER_SIZES[k]; return { id: 'auto-' + k, slot_key: 'auto-' + k, name: 'Auto banner ' + w + 'x' + h, kind: 'banner', size: 'custom', custom_width: w, custom_height: h, render_mode: 'isolated', code, label: 'Advertisement' } }
+const SLOT_BANNERS = {
+  top: { d: ['banner728x90'], m: [] }, bottom: { d: ['banner300x250'], m: ['banner300x250'] },
+  home_middle: { d: ['banner728x90'], m: ['banner300x250'] }, mod_bottom: { d: ['banner300x250'], m: ['banner300x250'] },
+  mod_sidebar: { d: ['banner160x300'], m: ['banner160x300'] }, 'article-end': { d: ['banner300x250'], m: ['banner300x250'] },
+}
+const KEY = { banner728x90: 'b728', banner300x250: 'b300', banner160x300: 'b160' }
+// Adsterra banners for a fixed spot on a page (empty when Adsterra is OFF, the page is OFF or cookies are not accepted).
+export function useAutoBanners(slot) {
+  const a = useAdsterra(), off = usePageAdsOff(), desktop = useMediaQuery('(min-width: 768px)')
+  if (off || !a.enabled) return []
+  const want = (SLOT_BANNERS[slot] || { d: [], m: [] })[desktop ? 'd' : 'm']
+  return want.filter(k => a.banners[KEY[k]]).map(k => bannerUnit(k, a.banners[KEY[k]]))
+}
+
+// Automatic in-content units (shown inside posts / mod descriptions when no unit is set up for that spot):
+// Monetag card after paragraph 3, 300x250 banner after 5, Adsterra card after 7, native banner after 10.
 export function useAutoUnits() {
-  const { link } = useMonetag()
-  const off = usePageAdsOff()
-  if (!link || off) return []
-  return [{ id: 'auto-direct', slot_key: 'auto-direct', name: 'Auto direct link', kind: 'direct_link', link_url: link, link_style: 'card', link_label: AUTO_AD_COPY[0].title, link_text: AUTO_AD_COPY[0].text, position_after: 3, repeat_every: 5, label: 'Advertisement' }]
+  const links = useAutoLinks(), a = useAdsterra(), off = usePageAdsOff()
+  if (off) return []
+  const units = []
+  links.forEach((l, i) => units.push({ id: 'auto-link-' + l.network, slot_key: 'auto-link-' + l.network, name: 'Auto direct link', kind: 'direct_link', link_url: l.url, link_style: 'card', link_label: AUTO_AD_COPY[(i * 2) % AUTO_AD_COPY.length].title, link_text: AUTO_AD_COPY[(i * 2) % AUTO_AD_COPY.length].text, position_after: i === 0 ? 3 : 7, repeat_every: 9, label: 'Advertisement' }))
+  if (a.banners.b300) units.push({ ...bannerUnit('banner300x250', a.banners.b300), position_after: 5, repeat_every: 8 })
+  if (a.native) units.push({ id: 'auto-native', slot_key: 'auto-native', name: 'Auto native banner', kind: 'native', size: 'responsive', custom_height: 120, render_mode: 'inline', code: a.native, position_after: 10, label: 'Advertisement' })
+  return units
 }

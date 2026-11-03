@@ -1,32 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { useAdUnits, useMonetag, usePageAdsOff } from '../lib/useAds'
+import { useAdsterra } from '../lib/adsterra'
 import { postscribe } from '../lib/postscribe'
 import AdUnit from './AdUnit'
+
+// Starts a network's scripts once the page is idle; one holder per pasted code so a broken one cannot stop the others.
+function useScriptLoader(scripts, pageOff, name) {
+  const sig = scripts.join('\u0000'), loadedSig = useRef(''), holders = useRef([])
+  useEffect(() => {
+    if (!scripts.length || pageOff || loadedSig.current === sig) return
+    const go = () => {
+      loadedSig.current = sig
+      scripts.forEach(code => {
+        const holder = document.createElement('div'); holder.setAttribute('data-modexa-' + name, '1'); holder.style.display = 'contents'
+        document.head.appendChild(holder); postscribe(holder, code); holders.current.push(holder)
+      })
+    }
+    const id = window.requestIdleCallback ? window.requestIdleCallback(go, { timeout: 2500 }) : setTimeout(go, 1200)
+    return () => { window.cancelIdleCallback ? window.cancelIdleCallback(id) : clearTimeout(id) }
+  }, [sig, pageOff])
+  useEffect(() => () => { holders.current.forEach(h => h.remove()); holders.current = []; loadedSig.current = '' }, [sig])
+}
 
 // Site-wide scripts (pop-under, social bar, ad-network loaders) + the sticky footer bar.
 // A page switched OFF (Admin → Page manager) only stops scripts from starting; scripts that already started cannot be unloaded safely.
 export default function GlobalAds() {
   const head = useAdUnits('global_head', {}, { ignorePageOff: true }), body = useAdUnits('global_body', {}, { ignorePageOff: true }), sticky = useAdUnits('sticky_bottom')
   const [hideSticky, setHideSticky] = useState(() => { try { return sessionStorage.getItem('modexa-sticky-closed') === '1' } catch { return false } })
-  const mt = useMonetag(), pageOff = usePageAdsOff()
-  const monetag = mt.scripts
-  const monetagSig = monetag.join('\u0000')
-  const loadedSig = useRef(''), holders = useRef([])
-  useEffect(() => {
-    if (!monetag.length || pageOff || loadedSig.current === monetagSig) return
-    const go = () => {
-      loadedSig.current = monetagSig
-      monetag.forEach(code => {   // one holder per pasted code, so a broken one cannot stop the others
-        const holder = document.createElement('div'); holder.setAttribute('data-modexa-monetag', '1'); holder.style.display = 'contents'
-        document.head.appendChild(holder); postscribe(holder, code); holders.current.push(holder)
-      })
-    }
-    // load ad scripts once the page is idle (max ~2.5s) so they never delay the first screen
-    const id = window.requestIdleCallback ? window.requestIdleCallback(go, { timeout: 2500 }) : setTimeout(go, 1200)
-    return () => { window.cancelIdleCallback ? window.cancelIdleCallback(id) : clearTimeout(id) }
-  }, [monetagSig, pageOff])
-  useEffect(() => () => { holders.current.forEach(h => h.remove()); holders.current = []; loadedSig.current = '' }, [monetagSig])
+  const mt = useMonetag(), at = useAdsterra(), pageOff = usePageAdsOff()
+  useScriptLoader(mt.scripts, pageOff, 'monetag'); useScriptLoader(at.scripts, pageOff, 'adsterra')
   const sig = [...head, ...body].map(u => u.id + ':' + (u.code || '').length).join('|')
   const added = useRef([])
   useEffect(() => {
