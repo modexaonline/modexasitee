@@ -1,7 +1,0 @@
-/mods /apps 301
-/mods/* /apps/:splat 301
-/categories /apps 301
-/categories/* /apps 301
-/trending /apps 301
-/latest /apps 301
-/*    /index.html   200
