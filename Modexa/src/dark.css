@@ -1,0 +1,47 @@
+/* =========================================================
+   Modexa dark mode (manual part). Loaded after dark.generated.css.
+   Active only when <html data-theme="dark">. Admin is always light.
+   ========================================================= */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --ink:#eef3ef;--ink-2:#cdd5cf;--ink-3:#97a39b;
+  --line:#242a26;--line-2:#323a35;
+  --bg:#0b0d0c;--surface:#121513;--surface-2:#171b18;
+  --brand-soft:#0f2a1a;--green-50:#0e241a;--green-100:#12301f;--green-200:#1b4a2d;
+}
+html[data-theme="dark"] html,html[data-theme="dark"] body,html[data-theme="dark"]{background:#0b0d0c!important;color:#e6ebe7}
+html[data-theme="dark"] body{background:#0b0d0c!important;color:#e6ebe7}
+html[data-theme="dark"] h1,html[data-theme="dark"] h2,html[data-theme="dark"] h3,html[data-theme="dark"] h4{color:#f1f5f2}
+html[data-theme="dark"] ::selection{background:#14532d;color:#fff}
+html[data-theme="dark"] .site-header{background:#0b0d0ce8!important;border-bottom-color:#242a26!important}
+html[data-theme="dark"] .site-header.is-scrolled{box-shadow:0 6px 24px #00000066!important}
+html[data-theme="dark"] .brand-name{color:#f1f5f2!important}
+html[data-theme="dark"] .brand-mark{background:#16a34a!important;color:#04130a!important}
+html[data-theme="dark"] .nav-link,html[data-theme="dark"] .saved-link{color:#cdd5cf!important}
+html[data-theme="dark"] .nav-link:hover,html[data-theme="dark"] .nav-link.active{color:#fff!important}
+html[data-theme="dark"] .text-gradient,html[data-theme="dark"] .hero-content h1 span{background:linear-gradient(100deg,#4ade80,#22c55e 55%,#34d399)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
+html[data-theme="dark"] .button-outline,html[data-theme="dark"] .button-ghost{background:transparent!important;color:#eef3ef!important;border-color:#4b554f!important}
+html[data-theme="dark"] .button-outline:hover,html[data-theme="dark"] .button-ghost:hover,html[data-theme="dark"] .button.is-active{background:#eef3ef!important;color:#0a0a0a!important;border-color:#eef3ef!important}
+html[data-theme="dark"] .submit-header{background:#16a34a!important;border-color:#16a34a!important;color:#04130a!important}
+html[data-theme="dark"] .submit-header:hover{background:#22c55e!important;border-color:#22c55e!important}
+html[data-theme="dark"] input,html[data-theme="dark"] textarea,html[data-theme="dark"] select{color-scheme:dark}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#7f8b84!important;opacity:1}
+html[data-theme="dark"] .submit-form input:not([type=checkbox]),html[data-theme="dark"] .submit-form select,html[data-theme="dark"] .submit-form textarea,html[data-theme="dark"] .filter-panel select,html[data-theme="dark"] .filter-panel input{background:#171b18!important;color:#eef3ef!important;border-color:#323a35!important}
+html[data-theme="dark"] .submission-success{background:#0e241a!important;border-color:#1b4a2d!important}
+html[data-theme="dark"] .form-error{color:#ff8f86!important}
+html[data-theme="dark"] .theme-toggle{background:#171b18;border-color:#323a35;color:#fbbf24}
+html[data-theme="dark"] .header-search,html[data-theme="dark"] .searchbox-header{background:#171b18!important;border-color:#2a312c!important}
+html[data-theme="dark"] .header-search kbd{background:#0f1210!important;border-color:#323a35!important}
+html[data-theme="dark"] .mobile-panel{background:#0f1210!important;border-color:#242a26!important}
+html[data-theme="dark"] img{filter:brightness(.92) contrast(1.02)}
+html[data-theme="dark"] .brand-mark img,html[data-theme="dark"] .site-footer img{filter:none}
+html[data-theme="dark"] hr{border-color:#242a26}
+html[data-theme="dark"] table{border-color:#242a26}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#323a35}
+html[data-theme="dark"] .cookie-notice{border:1px solid #2a312c}
+html[data-theme="dark"] h1,html[data-theme="dark"] h2{color:#f1f5f2!important}
+html[data-theme="dark"] .hero-content h1 span,html[data-theme="dark"] h1 .text-gradient,html[data-theme="dark"] h2 .text-gradient{color:transparent!important}
+html[data-theme="dark"] main a:not([class]){color:#4ade80}
+html[data-theme="dark"] main a:not([class]):hover{color:#86efac}
+html[data-theme="dark"] code,html[data-theme="dark"] pre{background:#171b18;color:#d7f5e1;border-color:#2a312c}
+html[data-theme="dark"] blockquote{background:#0e241a;border-color:#1b4a2d;color:#cdd5cf}

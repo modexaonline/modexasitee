@@ -1,0 +1,5 @@
+# Modexa
+
+> Independent hub for Android games: game pages, step-by-step guides and tips.
+
+See /sitemap.xml for all pages.
