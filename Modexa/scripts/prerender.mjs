@@ -126,22 +126,17 @@ for (const p of cpages) { if (POLICY_SLUGS.includes(p.slug)) continue
 const absImg = u => { u = String(u || '').trim(); return !u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('//') ? 'https:' + u : u.startsWith('/') ? SITE_URL + u : '' }
 // social image: the page's own cover → Admin → Site & brand “Default social-share image” → the built-in branded image
 const DEFAULT_IMG = absImg(settings.default_og_image) || SITE_URL + '/og-default.png'
-const setMeta = (html, attr, key, val) => {
-  const re = new RegExp(`<meta\\s[^>]*?\\b${attr}=["']${key.replace(/[:.]/g, m => '\\' + m)}["'][^>]*>`, 'gi'), tag = `<meta ${attr}="${key}" content="${esc(val)}"/>`
-  let n = 0; const out = html.replace(re, () => (n++ ? '' : tag))
-  return n ? out : out.replace('</head>', () => `  ${tag}\n</head>`)
-}
+const setMeta = (html, attr, key, val) => { const re = new RegExp(`<meta ${attr}="${key}"[^>]*>`); const tag = `<meta ${attr}="${key}" content="${esc(val)}"/>`; return re.test(html) ? html.replace(re, tag) : html.replace('</head>', `  ${tag}\n</head>`) }
 function build(r) {
   const url = r.canonical || SITE_URL + (r.path === '/' ? '/' : r.path)
   let h = template
   h = h.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(r.title)}</title>`)
   h = setMeta(h, 'name', 'description', r.description)
   h = setMeta(h, 'name', 'robots', r.noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1')
-  // Per-page social tags: Admin “Social sharing” fields win, then the SEO title / description, then the cover image, then the default image.
-  const o = r.og || {}, sTitle = String(o.title || '').trim() || r.title, sDesc = clip(String(o.description || '').trim() || r.description, 200), sImg = absImg(o.image) || absImg(r.image) || DEFAULT_IMG
-  const card = o.card === 'summary' ? 'summary' : 'summary_large_image'
+  const og = r.og || {}, sTitle = og.title || r.title, sDesc = og.description || r.description, sImg = absImg(og.image) || absImg(r.image) || DEFAULT_IMG
+  const card = og.card === 'summary' ? 'summary' : 'summary_large_image', handle = (String(settings.twitter_url || '').match(/(?:twitter|x)\.com\/@?([A-Za-z0-9_]{1,15})/) || [])[1]
   for (const [k, v] of [['og:site_name', 'Modexa'], ['og:title', sTitle], ['og:description', sDesc], ['og:url', url], ['og:type', r.type], ['og:image', sImg], ['og:image:alt', sTitle], ['og:locale', 'en_US']]) h = setMeta(h, 'property', k, v)
-  for (const [k, v] of [['twitter:card', card], ['twitter:title', sTitle], ['twitter:description', sDesc], ['twitter:image', sImg]]) h = setMeta(h, 'name', k, v)
+  for (const [k, v] of [['twitter:card', card], ['twitter:title', sTitle], ['twitter:description', sDesc], ['twitter:image', sImg], ...(handle ? [['twitter:site', '@' + handle]] : [])]) h = setMeta(h, 'name', k, v)
   h = h.replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${esc(url)}"/>`)
   const ld = `<script type="application/ld+json" data-modexa-ld="1">${JSON.stringify({ '@context': 'https://schema.org', '@graph': r.ld })}</script>`
   h = h.replace('</head>', `  ${ld}\n</head>`)

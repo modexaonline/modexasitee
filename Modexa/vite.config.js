@@ -1,8 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const SITE = (process.env.SITE_URL || process.env.VITE_SITE_URL || 'https://modexa.online').replace(/\/$/, '')
+const siteUrl = () => ({ name: 'modexa-site-url', transformIndexHtml: { order: 'post', handler: html => html.split('__SITE_URL__').join(SITE) } })
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), siteUrl()],
   build: {
     target: 'es2020',
     cssMinify: true,

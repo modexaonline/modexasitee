@@ -46,7 +46,7 @@ export default function DetailPage({ type = 'app', savedIds, onToggleSave }) {
   const rows = [['Creator', mod.creator], ['Version', mod.version], ['Updated', mod.updated], ['Platform', mod.platform], ['Category', mod.category]].filter(r => r[1])
   const body = mod.content || mod.description
   return <>
-    <SEO fullTitle={mod.seo_title ? `${mod.seo_title} | Modexa` : `${mod.title}: ${label.slice(0, -1)} | Modexa`} description={mod.seo_description || mod.short || `${mod.title} on Modexa.`} noindex={mod.noindex} canonical={mod.canonical_url} image={mod.image} og={{ title: mod.og_title, description: mod.og_description, image: mod.og_image, card: mod.twitter_card }} type="article" pageType="ItemPage" modified={mod.updated} breadcrumbs={crumbs} jsonLd={jsonLd} faqs={mod.faqs}/>
+    <SEO ogTitle={mod.og_title} ogDescription={mod.og_description} ogImage={mod.og_image} twitterCard={mod.twitter_card} fullTitle={mod.seo_title ? `${mod.seo_title} | Modexa` : `${mod.title}: ${label.slice(0, -1)} | Modexa`} description={mod.seo_description || mod.short || `${mod.title} on Modexa.`} noindex={mod.noindex} canonical={mod.canonical_url} image={mod.image} type="article" pageType="ItemPage" modified={mod.updated} breadcrumbs={crumbs} jsonLd={jsonLd} faqs={mod.faqs}/>
     <div className="detail-page container">
       <nav className="breadcrumbs" aria-label="Breadcrumb"><ol>{crumbs.map((c, i) => <li key={c.label}>{i > 0 && <ChevronRight size={13} aria-hidden="true"/>}{c.to && i < crumbs.length - 1 ? <Link to={c.to}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}</li>)}</ol></nav>
       <div className="detail-hero">

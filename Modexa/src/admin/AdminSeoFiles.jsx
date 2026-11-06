@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Save, Upload, Download, RotateCcw, ExternalLink, FileCode, Info, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useSettings } from '../lib/useSettings'
 import './admin-extra.css'
 
 const MAX = 500 * 1024
-const GA_DEFAULT = `<meta name="monetag" content="f77a2b6f16b1c2b0f935e7919b638d62">\n<!-- Google tag (gtag.js) -->\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-D6TLV9Y2L7"></script>\n<script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag('js', new Date());\n\n  gtag('config', 'G-D6TLV9Y2L7');\n</script>\n<!-- Social sharing defaults (Open Graph + Twitter). Every page overrides these with its own title, description and image. -->\n<meta property="og:site_name" content="Modexa"/>\n<meta property="og:type" content="website"/>\n<meta property="og:title" content="Modexa: Android Apps, Games &amp; Guides"/>\n<meta property="og:description" content="Android games, apps and step-by-step guides."/>\n<meta property="og:image" content="https://modexa.online/og-default.png"/>\n<meta property="og:image:width" content="1200"/>\n<meta property="og:image:height" content="630"/>\n<meta name="twitter:card" content="summary_large_image"/>\n<meta name="twitter:title" content="Modexa: Android Apps, Games &amp; Guides"/>\n<meta name="twitter:description" content="Android games, apps and step-by-step guides."/>\n<meta name="twitter:image" content="https://modexa.online/og-default.png"/>`
+const GA_DEFAULT = `<meta name="monetag" content="f77a2b6f16b1c2b0f935e7919b638d62">\n<!-- Google tag (gtag.js) -->\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-D6TLV9Y2L7"></script>\n<script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag('js', new Date());\n\n  gtag('config', 'G-D6TLV9Y2L7');\n</script>`
 const CFG = {
   head_code: { title: 'Header code', url: '/', def: null, accept: '.html,.txt,text/html,text/plain', ph: GA_DEFAULT },
   robots_txt: { title: 'robots.txt', url: '/robots.txt', def: '/robots.default.txt', accept: '.txt,text/plain', ph: 'User-agent: *\nAllow: /\nDisallow: /admin\n\nSitemap: https://modexa.online/sitemap.xml' },
@@ -31,6 +32,28 @@ function validate(col, text) {
   const root = doc.documentElement.nodeName
   if (root !== 'urlset' && root !== 'sitemapindex') return 'Sitemap must start with <urlset> (or <sitemapindex>).'
   return ''
+}
+
+
+// Read-only list of the Open Graph / Twitter tags every page already gets (set per page in Social sharing, or from these defaults).
+function SocialTags() {
+  const st = useSettings(), img = st.default_og_image || 'https://modexa.online/og-default.png'
+  const handle = (String(st.twitter_url || '').match(/(?:twitter|x)\.com\/@?([A-Za-z0-9_]{1,15})/) || [])[1]
+  const tags = `<meta property="og:site_name" content="Modexa">
+<meta property="og:type" content="website  (article on posts and listings)">
+<meta property="og:title" content="[page Social title, else SEO title]">
+<meta property="og:description" content="[page Social description, else meta description]">
+<meta property="og:url" content="https://modexa.online/[page]">
+<meta property="og:image" content="[page Social image, else cover image, else ${img}]">
+<meta property="og:image:alt" content="[page title]">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="[same as og:title]">
+<meta name="twitter:description" content="[same as og:description]">
+<meta name="twitter:image" content="[same as og:image]">${handle ? `\n<meta name="twitter:site" content="@${handle}">` : ''}`
+  return <details className="adm-tags" open><summary>Social tags added automatically on every page (Open Graph + Twitter)</summary>
+    <p className="adm-sub" style={{ margin: '8px 0 0' }}>You do not need to paste these here. They are written into the head of every page. Change them per page in the post / listing editor under “Social sharing”, and the default image in Site &amp; brand. To check: open your page, right-click → View page source, search for “og:”.</p>
+    <pre>{tags}</pre></details>
 }
 
 function Editor({ col, saved, onSaved, onNotice, onError }) {
@@ -73,42 +96,20 @@ function Editor({ col, saved, onSaved, onNotice, onError }) {
   return <section className="adm-card" style={{ display: 'grid', gap: 12 }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
       <div><h3 style={{ margin: 0, display: 'flex', gap: 8, alignItems: 'center' }}><FileCode size={18}/> {c.title}</h3>
-        <p className="adm-sub" style={{ margin: '4px 0 0' }}>{col === 'head_code' ? (custom ? 'Your custom code is added inside <head> of every public page.' : 'Using the built-in code (Monetag meta, Google tag G-D6TLV9Y2L7 and the Open Graph / Twitter defaults). Press “Load built-in” to see it here, edit it and Save.') : custom ? 'A custom file is live. It replaces the auto-generated one.' : 'Using the auto-generated file from the last build. Save text below to override it.'}</p></div>
+        <p className="adm-sub" style={{ margin: '4px 0 0' }}>{col === 'head_code' ? (custom ? 'Your custom code is added inside <head> of every public page.' : 'Using the built-in code (Monetag meta + Google tag G-D6TLV9Y2L7). Save code below to replace it.') : custom ? 'A custom file is live. It replaces the auto-generated one.' : 'Using the auto-generated file from the last build. Save text below to override it.'}</p></div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{custom && <span className="adm-pill green"><CheckCircle2 size={13}/> Custom</span>}<a className="adm-btn sm" href={c.url} target="_blank" rel="noreferrer"><ExternalLink size={14}/> View live</a></div>
     </div>
     <textarea rows={14} spellCheck={false} value={text} onChange={e => setText(e.target.value)} placeholder={c.ph} style={{ fontFamily: 'ui-monospace,Menlo,Consolas,monospace', fontSize: 13, width: '100%' }}/>
+    {col === 'head_code' && <SocialTags/>}
     <div className="adm-actions" style={{ flexWrap: 'wrap' }}>
       <button type="button" className="adm-btn primary" disabled={busy || !dirty} onClick={() => persist(text, `${c.title} saved. It is live now (CDN may take up to 5 minutes to refresh).`)}><Save size={15}/> {busy ? 'Saving…' : `Save ${c.title}`}</button>
       {col === 'head_code' && custom && !dirty && <button type="button" className="adm-btn primary" disabled={busy} onClick={rebuild} title="Rebuild the website so the saved header code appears on the live pages"><RotateCcw size={15}/> Publish to live site (rebuild)</button>}
       <button type="button" className="adm-btn" onClick={() => file.current?.click()}><Upload size={15}/> Upload file</button>
       <input ref={file} type="file" accept={c.accept} hidden onChange={upload}/>
-      <button type="button" className="adm-btn" onClick={loadDefault}>{col === 'head_code' ? 'Load built-in code' : 'Load auto-generated'}</button>
+      <button type="button" className="adm-btn" onClick={loadDefault}>Load auto-generated</button>
       <button type="button" className="adm-btn" onClick={download} disabled={!text.trim()}><Download size={15}/> Download</button>
       {custom && <button type="button" className="adm-btn danger" disabled={busy} onClick={() => { if (confirm(`Delete the custom ${c.title} and go back to the auto-generated one?`)) persist('', `Custom ${c.title} deleted. The auto-generated file is live again.`) }}><RotateCcw size={15}/> Delete custom file</button>}
     </div>
-  </section>
-}
-
-
-const CHECK_KEYS = [['title', 'Page title'], ['description', 'Meta description'], ['og:title', 'og:title'], ['og:description', 'og:description'], ['og:image', 'og:image'], ['og:type', 'og:type'], ['og:url', 'og:url'], ['twitter:card', 'twitter:card'], ['twitter:image', 'twitter:image']]
-function SocialTagsChecker() {
-  const [path, setPath] = useState('/'), [res, setRes] = useState(null), [busy, setBusy] = useState(false)
-  async function run() {
-    setBusy(true); setRes(null)
-    try {
-      const p = '/' + path.trim().replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '')
-      const r = await fetch(p, { cache: 'no-store', headers: { Accept: 'text/html' } }), html = await r.text()
-      const d = new DOMParser().parseFromString(html, 'text/html'), get = k => k === 'title' ? d.title : (d.querySelector(`meta[property="${k}"],meta[name="${k}"]`)?.getAttribute('content') || '')
-      setRes({ path: p, rows: CHECK_KEYS.map(([k, label]) => ({ k, label, v: get(k) })) })
-    } catch { setRes({ error: true }) }
-    setBusy(false)
-  }
-  return <section className="adm-card" style={{ display: 'grid', gap: 12 }}>
-    <div><h3 style={{ margin: 0 }}>Social tags checker</h3><p className="adm-sub" style={{ margin: '4px 0 0' }}>Shows the Open Graph and Twitter tags that Facebook, Threads, Flipboard and X receive for a page. Type a page link, for example <code>/blog/your-post</code>.</p></div>
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><input value={path} onChange={e => setPath(e.target.value)} onKeyDown={e => e.key === 'Enter' && run()} placeholder="/blog/your-post" style={{ flex: '1 1 260px' }} aria-label="Page link"/><button type="button" className="adm-btn primary" disabled={busy} onClick={run}>{busy ? 'Checking…' : 'Check tags'}</button></div>
-    {res?.error && <div className="adm-alert warn"><div>Could not load that page.</div></div>}
-    {res?.rows && <div style={{ display: 'grid', gap: 6 }}>{res.rows.map(r => <div key={r.k} style={{ display: 'grid', gridTemplateColumns: '24px 130px 1fr', gap: 8, alignItems: 'start', fontSize: 13 }}><b style={{ color: r.v ? '#15803d' : '#b91c1c' }}>{r.v ? '✓' : '✗'}</b><code>{r.label}</code><span style={{ wordBreak: 'break-all', color: r.v ? 'inherit' : '#b91c1c' }}>{r.v || 'missing'}</span></div>)}
-      {res.rows.find(r => r.k === 'og:image')?.v && <img src={res.rows.find(r => r.k === 'og:image').v} alt="og:image preview" style={{ width: '100%', maxWidth: 420, borderRadius: 10, border: '1px solid #e5e7eb' }}/>}</div>}
   </section>
 }
 
@@ -119,7 +120,6 @@ export default function AdminSeoFiles({ onNotice, onError }) {
   return <div className="adm">
     <div className="adm-head"><div><h2>Robots, Sitemap & Header code</h2><p>Edit, upload or delete these files. Robots and sitemap go live at once; header code rebuilds the site automatically.</p></div></div>
     <Editor col="head_code" saved={v.head_code} onSaved={x => setV(p => ({ ...p, head_code: x }))} onNotice={onNotice} onError={onError}/>
-    <SocialTagsChecker/>
     <Editor col="robots_txt" saved={v.robots_txt} onSaved={x => setV(p => ({ ...p, robots_txt: x }))} onNotice={onNotice} onError={onError}/>
     <Editor col="sitemap_xml" saved={v.sitemap_xml} onSaved={x => setV(p => ({ ...p, sitemap_xml: x }))} onNotice={onNotice} onError={onError}/>
     <div className="adm-alert info"><Info size={16} style={{ flex: 'none', marginTop: 2 }}/><div>Deleting a custom file switches back to the one generated automatically at every deploy. A custom sitemap does not update itself when you publish new posts, so delete it (or re-upload) to get the automatic one back. After changing the sitemap, resubmit it in Google Search Console.</div></div>

@@ -45,7 +45,6 @@ export default function AdminContent({ kind, onNotice, onError }) {
     if (r.error) { onError(r.error.message); return }
     setRows(r.data || []); setAds(a.data || []); setGameList(g.data || [])
   }
-  const ogMissing = rows.length > 0 && !('og_title' in rows[0])
   useEffect(() => { setEditing(null); setQ(''); setFs('all'); load(); getSitemapState().then(x => setSm({ paths: x.paths, ready: true })).catch(() => setSm({ paths: new Set(), ready: false })) }, [kind])
   async function toggleSitemap(r) {
     const path = normPath(cfg.href(r)), listed = sm.paths.has(path)
@@ -64,6 +63,7 @@ export default function AdminContent({ kind, onNotice, onError }) {
     const r = { ...editing }
     if (!r.title.trim()) return onError('Title is required.')
     const { id, created_at, updated_at, ...payload } = r
+    Object.keys(payload).forEach(k => { if (k[0] === '_') delete payload[k] })   // editor-only keys must never reach the database
     payload.title = payload.title.trim(); payload.slug = slugify(payload.slug || payload.title)
     if (!payload.slug) return onError('Slug is required.')
     if (!payload.published_at) payload.published_at = today()
@@ -73,14 +73,10 @@ export default function AdminContent({ kind, onNotice, onError }) {
     if (kind !== 'posts' && ('password_mode' in payload || 'download_password' in payload)) { payload.download_password = String(payload.download_password || '').trim(); if (payload.download_password && !isPin(payload.download_password)) return onError('The download password must be exactly 4 digits (or leave it empty for an automatic one).'); payload.password_mode = payload.password_mode || 'default' }
     if (kind !== 'posts' && ('unlock_mode' in payload || 'unlock_steps' in payload)) { if (hasBadStep(payload.unlock_steps)) return onError('Every unlock step link must start with https://'); payload.unlock_steps = cleanSteps(payload.unlock_steps); payload.unlock_mode = payload.unlock_mode || 'default'; if (payload.unlock_mode === 'custom' && !payload.unlock_steps.length) return onError('Add at least one unlock step, or choose another unlock option.') }
     setBusy(true)
-    const run = pl => id ? supabase.from(cfg.table).update(pl).eq('id', id) : supabase.from(cfg.table).insert(pl)
-    let { error } = await run(payload), skippedSocial = false
-    if (error && /og_title|og_description|og_image|twitter_card/i.test(error.message)) {   // v21 SQL not run yet: save everything else
-      const { og_title, og_description, og_image, twitter_card, ...rest } = payload; skippedSocial = true; ;({ error } = await run(rest))
-    }
+    const { error } = id ? await supabase.from(cfg.table).update(payload).eq('id', id) : await supabase.from(cfg.table).insert(payload)
     setBusy(false)
     if (error) return onError(/duplicate key/i.test(error.message) ? 'This URL slug is already used. Change the slug.' : error.message)
-    onNotice(skippedSocial ? 'Saved, but the social-sharing fields were not stored. Run supabase/v21_og_fields.sql once in Supabase, then save again.' : id ? 'Saved.' : 'Created.'); refresh(); setEditing(null); load()
+    onNotice(id ? 'Saved.' : 'Created.'); refresh(); setEditing(null); load()
   }
   async function toggle(r) { const next = r.status === 'published' ? 'draft' : 'published'; const { error } = await supabase.from(cfg.table).update({ status: next, ...(next === 'published' && !r.published_at ? { published_at: today() } : {}) }).eq('id', r.id); if (error) return onError(error.message); onNotice(next === 'published' ? 'Published, live on the site.' : 'Moved to draft.'); refresh(); load() }
   async function remove(r) { if (!confirm(`Delete “${r.title}” permanently?`)) return; const { error } = await supabase.from(cfg.table).delete().eq('id', r.id); if (error) return onError(error.message); onNotice('Deleted.'); refresh(); load() }
@@ -124,18 +120,14 @@ export default function AdminContent({ kind, onNotice, onError }) {
             <label className="adm-field" style={{ marginTop: 14 }}><span>Meta description</span><textarea rows={3} value={e.seo_description || ''} onChange={ev => set({ seo_description: ev.target.value })} placeholder={e.excerpt}/><Counter value={e.seo_description || e.excerpt} min={110} max={160}/></label>
             <div className="adm-serp"><small>Google preview</small><b>{(e.seo_title || e.title || 'Title') + ' | Modexa'}</b><i>modexa.online{cfg.href({ ...e, slug: e.slug || 'slug' })}</i><p>{(e.seo_description || e.excerpt || 'Your description appears here.').slice(0, 160)}</p></div>
             <div className="adm-grid2" style={{ marginTop: 14 }}><label className="adm-field"><span>Canonical URL (optional)</span><input value={e.canonical_url || ''} onChange={ev => set({ canonical_url: ev.target.value })}/></label><label className="adm-check" style={{ alignSelf: 'end', minHeight: 42 }}><input type="checkbox" checked={!!e.noindex} onChange={ev => set({ noindex: ev.target.checked })}/> Hide from search engines (noindex)</label></div></section>
-          <section className="adm-card"><h3>Social sharing (Open Graph &amp; Twitter card)</h3>
-            <p className="adm-sub">What Facebook, Threads, Flipboard, WhatsApp, LinkedIn, Telegram and X show when this page is shared. Leave a field empty to use the SEO title, meta description and cover image.</p>
-            {ogMissing && <div className="adm-alert warn" style={{ marginBottom: 12 }}><div>These fields cannot be saved yet. Run <b>supabase/v21_og_fields.sql</b> once in Supabase → SQL Editor, then reload this page. Until then the page still uses its SEO title and cover image for sharing.</div></div>}
-            <label className="adm-field"><span>OG title</span><input value={e.og_title || ''} onChange={ev => set({ og_title: ev.target.value })} maxLength={120} placeholder={e.seo_title || e.title}/><Counter value={e.og_title || e.seo_title || e.title} min={30} max={90}/></label>
-            <label className="adm-field" style={{ marginTop: 14 }}><span>OG description</span><textarea rows={3} maxLength={300} value={e.og_description || ''} onChange={ev => set({ og_description: ev.target.value })} placeholder={e.seo_description || e.excerpt}/><Counter value={e.og_description || e.seo_description || e.excerpt} min={60} max={200}/></label>
-            <div className="adm-grid2" style={{ marginTop: 14, alignItems: 'start' }}>
-              <div><ImageField label="OG image (social preview)" value={e.og_image} onChange={v => set({ og_image: v })} onError={onError} hint="1200×630 recommended. Empty = the cover image is used."/></div>
-              <label className="adm-field"><span>Twitter / X card</span><select value={e.twitter_card || 'summary_large_image'} onChange={ev => set({ twitter_card: ev.target.value })}><option value="summary_large_image">Large image (summary_large_image)</option><option value="summary">Small square image (summary)</option></select></label>
-            </div>
-            <div className="adm-serp" style={{ marginTop: 14 }}><small>Social preview ({(e.twitter_card || 'summary_large_image') === 'summary' ? 'small card' : 'large card'})</small>
-              {(e.og_image || e.cover_image) ? <img src={e.og_image || e.cover_image} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 10, marginTop: 8 }}/> : <p style={{ color: '#b45309', margin: '8px 0 0' }}>No image yet: the default Modexa share image will be used.</p>}
-              <b>{e.og_title || e.seo_title || e.title || 'Title'}</b><i>modexa.online</i><p>{(e.og_description || e.seo_description || e.excerpt || 'Your description appears here.').slice(0, 200)}</p></div>
+          <section className="adm-card"><h3>Social sharing (Facebook, WhatsApp, X / Twitter)</h3>
+            <p className="adm-sub">What people see when this page is shared. Leave a field empty and it is filled automatically from the SEO title, meta description and cover image (then the site default image).</p>
+            <label className="adm-field"><span>Social title (og:title)</span><input value={e.og_title || ''} onChange={ev => set({ og_title: ev.target.value })} maxLength={95} placeholder={e.seo_title || e.title}/><Counter value={e.og_title || e.seo_title || e.title || ''} min={30} max={70}/></label>
+            <label className="adm-field" style={{ marginTop: 14 }}><span>Social description (og:description)</span><textarea rows={3} maxLength={200} value={e.og_description || ''} onChange={ev => set({ og_description: ev.target.value })} placeholder={e.seo_description || e.excerpt || 'Short line shown under the title'}/><Counter value={e.og_description || e.seo_description || e.excerpt || ''} min={80} max={160}/></label>
+            <div style={{ marginTop: 14 }}><ImageField label="Social image (og:image)" value={e.og_image} onChange={v => set({ og_image: v })} onError={onError} hint="1200×630 works best. Empty = the cover image, then the site default image."/></div>
+            <label className="adm-field" style={{ marginTop: 14 }}><span>Twitter / X card</span><select value={e.twitter_card || 'summary_large_image'} onChange={ev => set({ twitter_card: ev.target.value })}><option value="summary_large_image">Large image card (recommended)</option><option value="summary">Small square card</option></select></label>
+            <div className="adm-og"><small>Share preview</small>
+              <div className="adm-og-card"><div className="adm-og-img" style={(e.og_image || e.cover_image || settings.default_og_image) ? { backgroundImage: `url(${e.og_image || e.cover_image || settings.default_og_image})` } : undefined}/><div className="adm-og-txt"><i>modexa.online</i><b>{e.og_title || e.seo_title || e.title || 'Title'}</b><p>{e.og_description || e.seo_description || e.excerpt || 'Description'}</p></div></div></div>
           </section>
         </div>
         <aside className="adm-sticky">

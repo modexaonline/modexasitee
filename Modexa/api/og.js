@@ -7,9 +7,8 @@ const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').re
 const clip = (s, n) => { s = String(s ?? '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s }
 const text = s => String(s ?? '').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/[#*_`>\[\]]/g, '').replace(/\s+/g, ' ').trim()
 const setMeta = (html, attr, key, val) => {
-  const re = new RegExp(`<meta\\s[^>]*?\\b${attr}=["']${key.replace(/[:.]/g, m => '\\' + m)}["'][^>]*>`, 'gi'), tag = `<meta ${attr}="${key}" content="${esc(val)}"/>`
-  let n = 0; const out = html.replace(re, () => (n++ ? '' : tag))
-  return n ? out : out.replace('</head>', () => `  ${tag}\n</head>`)
+  const re = new RegExp(`<meta ${attr}="${key}"[^>]*>`), tag = `<meta ${attr}="${key}" content="${esc(val)}"/>`
+  return re.test(html) ? html.replace(re, () => tag) : html.replace('</head>', () => `  ${tag}\n</head>`)
 }
 
 export default async function handler(req, res) {
@@ -30,11 +29,10 @@ export default async function handler(req, res) {
   try {
     if (!['blog', 'guide', 'games', 'apps'].includes(t) || !/^[a-z0-9-]{1,160}$/.test(slug)) return send(template)
     const isPost = t === 'blog' || t === 'guide'
-    const cols = isPost ? 'title,seo_title,seo_description,excerpt,content,cover_image,post_type,published_at,updated_at,noindex,canonical_url' : 'title,seo_title,seo_description,excerpt,description,cover_image,listing_type,platform,updated_at,noindex,canonical_url'
-    const tbl = isPost ? 'posts' : 'mods', social = ',og_title,og_description,og_image,twitter_card'
     const [rows, st] = await Promise.all([
-      q(`${tbl}?slug=eq.${slug}&status=eq.published&select=${cols}${social}&limit=1`).catch(() => q(`${tbl}?slug=eq.${slug}&status=eq.published&select=${cols}&limit=1`)),
-      q('site_settings?id=eq.1&select=default_og_image').catch(() => []),
+      q(isPost ? `posts?slug=eq.${slug}&status=eq.published&select=title,seo_title,seo_description,og_title,og_description,og_image,twitter_card,excerpt,content,cover_image,post_type,published_at,updated_at,noindex,canonical_url&limit=1`
+        : `mods?slug=eq.${slug}&status=eq.published&select=title,seo_title,seo_description,og_title,og_description,og_image,twitter_card,excerpt,description,cover_image,listing_type,platform,updated_at,noindex,canonical_url&limit=1`),
+      q('site_settings?id=eq.1&select=default_og_image,twitter_url').catch(() => []),
     ])
     const row = rows?.[0]
     if (!row) return send(template)
@@ -43,14 +41,15 @@ export default async function handler(req, res) {
     const url = abs(row.canonical_url) || site + path
     const title = row.seo_title ? `${row.seo_title} | Modexa` : isPost ? `${row.title} | Modexa` : `${row.title}: ${row.listing_type === 'game' ? 'Game' : 'App'} | Modexa`
     const desc = clip(row.seo_description || row.excerpt || (isPost ? '' : row.description) || row.title, 158)
-    const sTitle = String(row.og_title || '').trim() || title, sDesc = clip(String(row.og_description || '').trim() || desc, 200)
-    const image = abs(row.og_image) || abs(row.cover_image) || abs(st?.[0]?.default_og_image) || site + '/og-default.png', card = row.twitter_card === 'summary' ? 'summary' : 'summary_large_image'
+    const image = abs(row.og_image) || abs(row.cover_image) || abs(st?.[0]?.default_og_image) || site + '/og-default.png'
+    const sTitle = row.og_title || title, sDesc = row.og_description || desc, card = row.twitter_card === 'summary' ? 'summary' : 'summary_large_image'
+    const handle = (String(st?.[0]?.twitter_url || '').match(/(?:twitter|x)\.com\/@?([A-Za-z0-9_]{1,15})/) || [])[1]
     let h = template
     h = h.replace(/<title>[\s\S]*?<\/title>/, () => `<title>${esc(title)}</title>`)
     h = setMeta(h, 'name', 'description', desc)
     h = setMeta(h, 'name', 'robots', row.noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1')
     for (const [k, v] of [['og:site_name', 'Modexa'], ['og:title', sTitle], ['og:description', sDesc], ['og:url', url], ['og:type', 'article'], ['og:image', image], ['og:image:alt', sTitle], ['og:locale', 'en_US'], ...(row.published_at ? [['article:published_time', row.published_at]] : []), ...(row.updated_at ? [['article:modified_time', row.updated_at]] : [])]) h = setMeta(h, 'property', k, v)
-    for (const [k, v] of [['twitter:card', card], ['twitter:title', sTitle], ['twitter:description', sDesc], ['twitter:image', image]]) h = setMeta(h, 'name', k, v)
+    for (const [k, v] of [['twitter:card', card], ['twitter:title', sTitle], ['twitter:description', sDesc], ['twitter:image', image], ...(handle ? [['twitter:site', '@' + handle]] : [])]) h = setMeta(h, 'name', k, v)
     h = h.replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${esc(url)}"/>`)
     h = h.replace(/<script type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>\s*/gi, '')
     const ld = { '@context': 'https://schema.org', '@graph': [{ '@type': 'Article', headline: row.title, description: desc, image: image, mainEntityOfPage: url, datePublished: row.published_at || undefined, dateModified: row.updated_at || row.published_at || undefined, author: { '@type': 'Organization', name: 'Modexa' }, publisher: { '@type': 'Organization', name: 'Modexa', logo: { '@type': 'ImageObject', url: site + '/favicon.svg' } } }] }
