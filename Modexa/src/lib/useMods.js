@@ -18,7 +18,7 @@ export function normalize(row) {
     unlockMode: row.unlock_mode || 'default', unlockSteps: Array.isArray(row.unlock_steps) ? row.unlock_steps : [],
     type: row.listing_type === 'game' ? 'game' : 'app', content: row.content || '', href: (row.listing_type === 'game' ? '/games/' : '/apps/') + row.slug,
     faqs: Array.isArray(row.faqs) ? row.faqs.filter(f => f && f.q && f.a) : [],
-    seo_title: row.seo_title || '', seo_description: row.seo_description || '', canonical_url: row.canonical_url || '', noindex: Boolean(row.noindex),
+    seo_title: row.seo_title || '', seo_description: row.seo_description || '', canonical_url: row.canonical_url || '', noindex: Boolean(row.noindex), og_title: row.og_title || '', og_description: row.og_description || '', og_image: row.og_image || '', twitter_card: row.twitter_card || '',
   }
 }
 

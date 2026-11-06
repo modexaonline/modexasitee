@@ -9,7 +9,7 @@ function upsertMeta(attribute, key, content) {
 }
 
 // title: page title (without brand). breadcrumbs: [{label,to}]. faqs: [{q,a}] -> FAQPage schema. jsonLd: extra schema node(s).
-export default function SEO({ title, fullTitle, description, noindex = false, canonical = '', image = '', type = 'website', jsonLd = null, breadcrumbs = null, faqs = null, pageType = 'WebPage', modified = '' }) {
+export default function SEO({ title, fullTitle, description, noindex = false, canonical = '', image = '', type = 'website', jsonLd = null, breadcrumbs = null, faqs = null, pageType = 'WebPage', modified = '', og = null }) {
   const defaultOg = useSettings().default_og_image || ''
   useEffect(() => {
     const absUrl = u => { u = String(u || '').trim(); return !u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('//') ? 'https:' + u : u.startsWith('/') ? window.location.origin + u : '' }
@@ -22,11 +22,12 @@ export default function SEO({ title, fullTitle, description, noindex = false, ca
     document.title = finalTitle
     upsertMeta('name', 'description', summary)
     upsertMeta('name', 'robots', noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1')
-    upsertMeta('property', 'og:title', finalTitle); upsertMeta('property', 'og:description', summary)
+    const sTitle = String(og?.title || '').trim() || finalTitle, sDesc = String(og?.description || '').trim() || summary, sImg = absUrl(og?.image) || image || DEFAULT_IMG
+    upsertMeta('property', 'og:title', sTitle); upsertMeta('property', 'og:description', sDesc); upsertMeta('property', 'og:site_name', 'Modexa')
     upsertMeta('property', 'og:type', type); upsertMeta('property', 'og:url', url)
-    upsertMeta('property', 'og:image', image || DEFAULT_IMG); upsertMeta('property', 'og:locale', 'en_US')
-    upsertMeta('name', 'twitter:card', 'summary_large_image'); upsertMeta('name', 'twitter:title', finalTitle)
-    upsertMeta('name', 'twitter:description', summary); upsertMeta('name', 'twitter:image', image || DEFAULT_IMG)
+    upsertMeta('property', 'og:image', sImg); upsertMeta('property', 'og:locale', 'en_US')
+    upsertMeta('name', 'twitter:card', og?.card === 'summary' ? 'summary' : 'summary_large_image'); upsertMeta('name', 'twitter:title', sTitle)
+    upsertMeta('name', 'twitter:description', sDesc); upsertMeta('name', 'twitter:image', sImg)
     let link = document.head.querySelector('link[rel="canonical"]')
     if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link) }
     link.href = url
@@ -40,6 +41,6 @@ export default function SEO({ title, fullTitle, description, noindex = false, ca
     if (!ld) { ld = document.createElement('script'); ld.type = 'application/ld+json'; ld.setAttribute('data-modexa-ld', '1'); document.head.appendChild(ld) }
     ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })
     return () => { document.head.querySelector('script[data-modexa-ld]')?.remove() }
-  }, [title, fullTitle, description, noindex, canonical, image, type, modified, defaultOg, JSON.stringify(jsonLd), JSON.stringify(breadcrumbs), JSON.stringify(faqs)])
+  }, [title, fullTitle, description, noindex, canonical, image, type, modified, defaultOg, og?.title, og?.description, og?.image, og?.card, JSON.stringify(jsonLd), JSON.stringify(breadcrumbs), JSON.stringify(faqs)])
   return null
 }

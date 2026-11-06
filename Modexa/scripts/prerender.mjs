@@ -103,7 +103,7 @@ for (const m of mods) {
   const title = m.seo_title ? `${m.seo_title} | Modexa` : `${m.title}: ${label} | Modexa`
   const desc = clip(m.seo_description || m.excerpt || m.description || `${m.title} on Modexa.`, 158)
   const list = (a, t) => Array.isArray(a) && a.length ? `<h2>${t}</h2><ul>${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''
-  add({ path, title, description: desc, h1: m.title, image: m.cover_image, type: 'article', noindex: !!m.noindex, canonical: m.canonical_url || '',
+  add({ path, title, description: desc, h1: m.title, image: m.cover_image, og: { title: m.og_title, description: m.og_description, image: m.og_image, card: m.twitter_card }, type: 'article', noindex: !!m.noindex, canonical: m.canonical_url || '',
     body: `<p>${esc(m.excerpt || '')}</p><ul>${m.platform ? `<li>Platform: ${esc(m.platform)}</li>` : ''}${m.version ? `<li>Version: ${esc(m.version)}</li>` : ''}${m.creator ? `<li>Creator: ${esc(m.creator)}</li>` : ''}${m.category ? `<li>Category: ${esc(m.category)}</li>` : ''}</ul>${staticBody(m.content || m.description || '')}${list(m.features, 'Features')}${relGuides(m)}${faqHtml(cleanF(m.faqs))}${list(m.requirements, 'Requirements')}${Array.isArray(m.install) && m.install.length ? `<h2>How to install</h2><ol>${m.install.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}`,
     lastmod: (m.updated_at || '').slice(0, 10),
     ld: [pageLd(path, title, desc, 'ItemPage', { dateModified: m.updated_at || undefined }), crumbsLd(path, [{ label: 'Home', to: '/' }, { label: isGame ? 'Games' : 'Apps', to: base.slice(0, -1) }, { label: m.title, to: path }]),
@@ -113,7 +113,7 @@ for (const m of mods) {
 }
 for (const p of posts) {
   const type = p.post_type === 'guide' ? 'guide' : 'blog', path = '/' + type + '/' + p.slug, title = p.seo_title ? `${p.seo_title} | Modexa` : `${p.title} | Modexa`, desc = clip(p.seo_description || p.excerpt || p.title, 158)
-  add({ path, title, description: desc, h1: p.title, image: p.cover_image, type: 'article', noindex: !!p.noindex, canonical: p.canonical_url || '', lastmod: (p.updated_at || '').slice(0, 10),
+  add({ path, title, description: desc, h1: p.title, image: p.cover_image, og: { title: p.og_title, description: p.og_description, image: p.og_image, card: p.twitter_card }, type: 'article', noindex: !!p.noindex, canonical: p.canonical_url || '', lastmod: (p.updated_at || '').slice(0, 10),
     body: `<p>${esc(p.excerpt || '')}</p>${staticBody(p.content)}${faqHtml(cleanF(p.faqs))}`,
     ld: [pageLd(path, title, desc, 'WebPage', { dateModified: p.updated_at || undefined }), crumbsLd(path, [{ label: 'Home', to: '/' }, { label: type === 'guide' ? 'Guide' : 'Blog', to: '/' + type }, { label: p.title, to: path }]),
       { '@type': 'Article', headline: p.title, description: desc, image: p.cover_image || undefined, datePublished: p.published_at || undefined, dateModified: p.updated_at || p.published_at || undefined, author: { '@type': 'Organization', name: 'Modexa' }, publisher: { '@id': SITE_URL + '/#organization' }, mainEntityOfPage: SITE_URL + path }, ...(cleanF(p.faqs).length ? [faqLd(cleanF(p.faqs))] : [])] })
@@ -126,15 +126,22 @@ for (const p of cpages) { if (POLICY_SLUGS.includes(p.slug)) continue
 const absImg = u => { u = String(u || '').trim(); return !u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('//') ? 'https:' + u : u.startsWith('/') ? SITE_URL + u : '' }
 // social image: the page's own cover → Admin → Site & brand “Default social-share image” → the built-in branded image
 const DEFAULT_IMG = absImg(settings.default_og_image) || SITE_URL + '/og-default.png'
-const setMeta = (html, attr, key, val) => { const re = new RegExp(`<meta ${attr}="${key}"[^>]*>`); const tag = `<meta ${attr}="${key}" content="${esc(val)}"/>`; return re.test(html) ? html.replace(re, tag) : html.replace('</head>', `  ${tag}\n</head>`) }
+const setMeta = (html, attr, key, val) => {
+  const re = new RegExp(`<meta\\s[^>]*?\\b${attr}=["']${key.replace(/[:.]/g, m => '\\' + m)}["'][^>]*>`, 'gi'), tag = `<meta ${attr}="${key}" content="${esc(val)}"/>`
+  let n = 0; const out = html.replace(re, () => (n++ ? '' : tag))
+  return n ? out : out.replace('</head>', () => `  ${tag}\n</head>`)
+}
 function build(r) {
   const url = r.canonical || SITE_URL + (r.path === '/' ? '/' : r.path)
   let h = template
   h = h.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(r.title)}</title>`)
   h = setMeta(h, 'name', 'description', r.description)
   h = setMeta(h, 'name', 'robots', r.noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1')
-  for (const [k, v] of [['og:title', r.title], ['og:description', r.description], ['og:url', url], ['og:type', r.type], ['og:image', absImg(r.image) || DEFAULT_IMG], ['og:image:alt', r.h1], ['og:locale', 'en_US']]) h = setMeta(h, 'property', k, v)
-  for (const [k, v] of [['twitter:card', 'summary_large_image'], ['twitter:title', r.title], ['twitter:description', r.description], ['twitter:image', absImg(r.image) || DEFAULT_IMG]]) h = setMeta(h, 'name', k, v)
+  // Per-page social tags: Admin “Social sharing” fields win, then the SEO title / description, then the cover image, then the default image.
+  const o = r.og || {}, sTitle = String(o.title || '').trim() || r.title, sDesc = clip(String(o.description || '').trim() || r.description, 200), sImg = absImg(o.image) || absImg(r.image) || DEFAULT_IMG
+  const card = o.card === 'summary' ? 'summary' : 'summary_large_image'
+  for (const [k, v] of [['og:site_name', 'Modexa'], ['og:title', sTitle], ['og:description', sDesc], ['og:url', url], ['og:type', r.type], ['og:image', sImg], ['og:image:alt', sTitle], ['og:locale', 'en_US']]) h = setMeta(h, 'property', k, v)
+  for (const [k, v] of [['twitter:card', card], ['twitter:title', sTitle], ['twitter:description', sDesc], ['twitter:image', sImg]]) h = setMeta(h, 'name', k, v)
   h = h.replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${esc(url)}"/>`)
   const ld = `<script type="application/ld+json" data-modexa-ld="1">${JSON.stringify({ '@context': 'https://schema.org', '@graph': r.ld })}</script>`
   h = h.replace('</head>', `  ${ld}\n</head>`)

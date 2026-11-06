@@ -9,9 +9,10 @@ import { cleanSteps, hasBadStep } from '../lib/unlock'
 import { ImageField, uploadImage } from './fields'
 import './admin-extra.css'
 
+const BUILTIN_OG = 'https://modexa.online/og-default.png'
 export default function AdminSite({ onNotice, onError }) {
   const [f, setF] = useState(defaultSettings), [busy, setBusy] = useState(false), [loaded, setLoaded] = useState(false)
-  useEffect(() => { supabase.from('site_settings').select('*').eq('id', 1).maybeSingle().then(({ data, error }) => { if (error) onError(error.message); else { const d = { ...defaultSettings, ...(data || {}) }; if (!Array.isArray(d.social_links) || !d.social_links.length) d.social_links = legacySocials(d); setF(d) } setLoaded(true) }) }, [])
+  useEffect(() => { supabase.from('site_settings').select('*').eq('id', 1).maybeSingle().then(({ data, error }) => { if (error) onError(error.message); else { const d = { ...defaultSettings, ...(data || {}) }; if (!Array.isArray(d.social_links) || !d.social_links.length) d.social_links = legacySocials(d); if (!d.default_og_image) d.default_og_image = BUILTIN_OG; setF(d) } setLoaded(true) }) }, [])
   const set = k => e => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
   const soc = f.social_links || [], setSoc = social_links => setF({ ...f, social_links })
   const upd = (i, p) => setSoc(soc.map((x, j) => j === i ? { ...x, ...p } : x))
@@ -39,7 +40,8 @@ export default function AdminSite({ onNotice, onError }) {
       <div className="adm-grid2"><label className="adm-field"><span>Site name</span><input value={f.site_name} onChange={set('site_name')} maxLength={60}/></label><label className="adm-field"><span>Contact email</span><input type="email" value={f.contact_email} onChange={set('contact_email')} placeholder="hello@modexa.online"/></label></div>
       <label className="adm-field" style={{ marginTop: 14 }}><span>Footer tagline</span><input value={f.tagline} onChange={set('tagline')} maxLength={160}/></label>
       <label className="adm-field" style={{ marginTop: 14 }}><span>Extra footer text (optional)</span><input value={f.footer_text} onChange={set('footer_text')} maxLength={240}/></label>
-      <div className="adm-grid2" style={{ marginTop: 14 }}><ImageField label="Logo image (optional)" value={f.logo_url} onChange={v => setF({ ...f, logo_url: v })} onError={onError} hint="Square PNG/SVG works best."/><ImageField label="Default social-share image" value={f.default_og_image} onChange={v => setF({ ...f, default_og_image: v })} onError={onError} hint="1200×630 recommended."/></div></section>
+      <div className="adm-grid2" style={{ marginTop: 14 }}><ImageField label="Logo image (optional)" value={f.logo_url} onChange={v => setF({ ...f, logo_url: v })} onError={onError} hint="Square PNG/SVG works best."/><ImageField label="Default social-share image" value={f.default_og_image} onChange={v => setF({ ...f, default_og_image: v })} onError={onError} hint="1200×630 recommended. Used when a page has no cover image. Press Save to store it."/></div>
+      {f.default_og_image === BUILTIN_OG && <p className="adm-sub" style={{ marginTop: 8 }}>This is the built-in Modexa image. Upload your own above to replace it.</p>}</section>
     <section className="adm-card"><h3>Announcement bar</h3>
       <label className="adm-check"><input type="checkbox" checked={!!f.announcement_active} onChange={set('announcement_active')}/> Show the announcement bar</label>
       <div className="adm-grid3" style={{ marginTop: 14 }}><label className="adm-field"><span>Text</span><input value={f.announcement} onChange={set('announcement')} maxLength={160} placeholder="New guide is live!"/></label><label className="adm-field"><span>Link (optional)</span><input value={f.announcement_link} onChange={set('announcement_link')} placeholder="/guide or https://…"/></label>
