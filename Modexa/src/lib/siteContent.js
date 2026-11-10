@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, supabaseConfigured } from './supabase'
 import { mergeContent } from '../content/merge.js'
+import { useLang, useTrMap, overlayContent } from './i18n'
 
 let cache = null, inflight = null
 const listeners = new Set()
@@ -27,7 +28,7 @@ export function useContentReady() {
 // Call after saving from admin so the public site updates instantly.
 export function setContentCache(key, data) { cache = { ...(cache || {}) }; if (data) cache[key] = { ...data, __updated: new Date().toISOString() }; else delete cache[key]; listeners.forEach(f => f(cache)) }
 export function usePageContent(key, defaults) {
-  const c = useSiteContent()
-  const merged = mergeContent(defaults, c[key])
+  const c = useSiteContent(), lang = useLang(), tr = useTrMap(lang)
+  const base = mergeContent(defaults, c[key]), merged = tr?.['content:' + key] ? overlayContent(base, tr['content:' + key]) : base
   return { ...merged, __custom: Boolean(c[key]), __updated: c[key]?.__updated || '' }
 }

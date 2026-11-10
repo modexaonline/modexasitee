@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from '../lib/i18nRouter'
 import { ArrowRight, ArrowUpRight, Search, Sparkles, ShieldCheck, Zap, Compass, TrendingUp, Clock3, Gamepad2, BadgeCheck, Layers3, Smartphone, UserCheck, Scale, FileSearch, Download } from 'lucide-react'
 import SEO from '../components/SEO'
 import AnswerBox from '../components/AnswerBox'
@@ -31,7 +31,7 @@ export default function HomePage({ savedIds, onToggleSave }) {
   const hs = homeHidden(home), on = k => !hs.includes(k)
   const quick = [['/apps', 'Apps'], ['/games', 'Games'], ['/guide', 'Guides']].filter(([p]) => show(p))
   return <>
-    <SEO fullTitle={home.seoTitle} description={home.description} faqs={home.faqs}/>
+    <SEO i18n={{ kind: 'content', key: 'home' }} fullTitle={home.seoTitle} description={home.description} faqs={home.faqs}/>
     {on('hero') && <section className="hero-section">
       <div className="hero-orb hero-orb-one"/><div className="hero-orb hero-orb-two"/>
       <div className="container hero-content">

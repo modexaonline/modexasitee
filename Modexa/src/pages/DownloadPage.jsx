@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from '../lib/i18nRouter'
 import { Download, ArrowLeft, ShieldAlert, Volume2, VolumeX } from 'lucide-react'
 import SEO from '../components/SEO'
 import AdSlot from '../components/AdSlot'

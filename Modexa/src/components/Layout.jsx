@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom'
+import { useLocation } from '../lib/i18nRouter'
 import Header from './Header'
 import Footer from './Footer'
 import AnnouncementBar from './AnnouncementBar'

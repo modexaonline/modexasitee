@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useT } from '../lib/i18n'
+import { Link, NavLink, useLocation, useNavigate } from '../lib/i18nRouter'
 import { Menu, X, Bookmark } from 'lucide-react'
 import SearchBox from './SearchBox'
 import Logo from './Logo'
 import ThemeToggle from './ThemeToggle'
+import LangSwitcher from './LangSwitcher'
 import usePublicPages from '../lib/usePublicPages'
 import { usePageContent, useHiddenPaths } from '../lib/siteContent'
 import { isPathHidden } from '../lib/hidden'
@@ -11,6 +13,7 @@ import { NAV_DEFAULT } from '../content/merge'
 
 
 export default function Header({ savedCount = 0 }) {
+  const t = useT()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [scrolled, setScrolled] = useState(false)
@@ -38,24 +41,25 @@ export default function Header({ savedCount = 0 }) {
     <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`}>
       <div className="header-inner">
         <Logo />
-        <nav className="desktop-nav" aria-label="Main navigation">
+        <nav className="desktop-nav" aria-label={t('Main navigation')}>
           {links.map(link => <NavLink key={link.to} to={link.to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>{link.label}</NavLink>)}
           {customPages.map(page => <NavLink key={page.slug} to={`/page/${page.slug}`} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>{page.title}</NavLink>)}
         </nav>
         <div className="header-actions">
           <SearchBox variant="header" className="header-searchbox"/>
+          <LangSwitcher/>
           <ThemeToggle/>
-          <Link className="saved-link" to="/saved" aria-label={`Saved mods, ${savedCount} saved`}><Bookmark size={18}/><span className="saved-count">{savedCount}</span></Link>
-          <Link className="button button-small button-primary submit-header" to="/submit-mod">Submit a Game <span>↗</span></Link>
-          <button className="icon-button mobile-menu-button" onClick={() => setMobileOpen(v => !v)} aria-label={mobileOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileOpen}>{mobileOpen ? <X/> : <Menu/>}</button>
+          <Link className="saved-link" to="/saved" aria-label={`${t('Saved mods')}: ${savedCount}`}><Bookmark size={18}/><span className="saved-count">{savedCount}</span></Link>
+          <Link className="button button-small button-primary submit-header" to="/submit-mod">{t('Submit a Game')} <span>↗</span></Link>
+          <button className="icon-button mobile-menu-button" onClick={() => setMobileOpen(v => !v)} aria-label={mobileOpen ? t('Close menu') : t('Open menu')} aria-expanded={mobileOpen}>{mobileOpen ? <X/> : <Menu/>}</button>
         </div>
       </div>
       {mobileOpen && <div className="mobile-panel">
         <SearchBox variant="mobile" onDone={() => setMobileOpen(false)}/>
         {links.map(link => <NavLink key={link.to} to={link.to} className="mobile-nav-link">{link.label}<span>↗</span></NavLink>)}
         {customPages.map(page => <NavLink key={page.slug} to={`/page/${page.slug}`} className="mobile-nav-link">{page.title}<span>↗</span></NavLink>)}
-        <Link className="mobile-nav-link" to="/saved">Saved mods <span>{savedCount}</span></Link>
-        <Link className="button button-primary mobile-submit" to="/submit-mod">Submit a Game</Link>
+        <Link className="mobile-nav-link" to="/saved">{t('Saved mods')} <span>{savedCount}</span></Link>
+        <Link className="button button-primary mobile-submit" to="/submit-mod">{t('Submit a Game')}</Link>
       </div>}
     </header>
   )

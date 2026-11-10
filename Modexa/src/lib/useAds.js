@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation } from './i18nRouter'
 import { supabase, supabaseConfigured } from './supabase'
 import { useSettings } from './useSettings'
 import { useConsent } from './consent'

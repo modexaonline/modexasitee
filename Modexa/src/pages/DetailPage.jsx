@@ -1,4 +1,5 @@
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from '../lib/i18nRouter'
+import { useT } from '../lib/i18n'
 import { ArrowLeft, Bookmark, Check, Download, CalendarDays, UserRound, Monitor, ChevronRight } from 'lucide-react'
 import SEO from '../components/SEO'
 import ModCard from '../components/ModCard'
@@ -23,6 +24,7 @@ import { slugify } from '../lib/format'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 
 export default function DetailPage({ type = 'app', savedIds, onToggleSave }) {
+  const t = useT()
   const { items: mods, loading } = useModsState(), { items: posts } = usePostsState(), { slug } = useParams(), settings = useSettings()
   const mod = mods.find(m => m.slug === slug)
   const ctx = { gameSlug: mod ? slugify(mod.game) : '' }
@@ -42,11 +44,11 @@ export default function DetailPage({ type = 'app', savedIds, onToggleSave }) {
     { '@type': type === 'game' ? ['VideoGame', 'SoftwareApplication'] : 'SoftwareApplication', name: mod.title, applicationCategory: type === 'game' ? 'GameApplication' : 'MobileApplication', ...(type === 'game' ? { gamePlatform: mod.platform, genre: mod.category || undefined } : {}), operatingSystem: mod.platform, description: mod.short || undefined, image: mod.image || undefined, softwareVersion: mod.version || undefined, datePublished: mod.updated || undefined, author: { '@type': 'Person', name: mod.creator } },
     ...(mod.install?.length ? [{ '@type': 'HowTo', name: `How to install ${mod.title}`, step: mod.install.map((t, n) => ({ '@type': 'HowToStep', position: n + 1, text: String(t) })) }] : []),
   ]
-  const crumbs = [{ label: 'Home', to: '/' }, { label, to: base }, { label: mod.title }]
-  const rows = [['Creator', mod.creator], ['Version', mod.version], ['Updated', mod.updated], ['Platform', mod.platform], ['Category', mod.category]].filter(r => r[1])
+  const crumbs = [{ label: t('Home'), to: '/' }, { label, to: base }, { label: mod.title }]
+  const rows = [[t('Creator'), mod.creator], [t('Version'), mod.version], [t('Updated'), mod.updated], [t('Platform'), mod.platform], [t('Category'), mod.category]].filter(r => r[1])
   const body = mod.content || mod.description
   return <>
-    <SEO ogTitle={mod.og_title} ogDescription={mod.og_description} ogImage={mod.og_image} twitterCard={mod.twitter_card} fullTitle={mod.seo_title ? `${mod.seo_title} | Modexa` : `${mod.title}: ${label.slice(0, -1)} | Modexa`} description={mod.seo_description || mod.short || `${mod.title} on Modexa.`} noindex={mod.noindex} canonical={mod.canonical_url} image={mod.image} type="article" pageType="ItemPage" modified={mod.updated} breadcrumbs={crumbs} jsonLd={jsonLd} faqs={mod.faqs}/>
+    <SEO i18n={{ kind: 'mod', key: mod.id, translated: mod._tr }} ogTitle={mod.og_title} ogDescription={mod.og_description} ogImage={mod.og_image} twitterCard={mod.twitter_card} fullTitle={mod.seo_title ? `${mod.seo_title} | Modexa` : `${mod.title}: ${label.slice(0, -1)} | Modexa`} description={mod.seo_description || mod.short || `${mod.title} on Modexa.`} noindex={mod.noindex} canonical={mod.canonical_url} image={mod.image} type="article" pageType="ItemPage" modified={mod.updated} breadcrumbs={crumbs} jsonLd={jsonLd} faqs={mod.faqs}/>
     <div className="detail-page container">
       <nav className="breadcrumbs" aria-label="Breadcrumb"><ol>{crumbs.map((c, i) => <li key={c.label}>{i > 0 && <ChevronRight size={13} aria-hidden="true"/>}{c.to && i < crumbs.length - 1 ? <Link to={c.to}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}</li>)}</ol></nav>
       <div className="detail-hero">
@@ -54,13 +56,13 @@ export default function DetailPage({ type = 'app', savedIds, onToggleSave }) {
         <div className="detail-summary">
           <h1>{mod.title}</h1>
           {mod.short && <p className="detail-lead">{mod.short}</p>}
-          <div className="detail-game-line"><span className="game-mini-icon"><Monitor size={16}/></span><span>{mod.game && mod.game !== 'Uncategorized' && mod.game !== mod.title ? <>For <strong>{mod.game}</strong> · </> : null}{mod.platform}</span></div>
-          <div className="detail-stats"><div><Download size={16}/><span><b>{formatCount(mod.downloads)}</b><small>Downloads</small></span></div>{mod.updated && <div><CalendarDays size={16}/><span><b>{mod.updated}</b><small>Updated</small></span></div>}{mod.creator && <div><UserRound size={16}/><span><b>{mod.creator}</b><small>Creator</small></span></div>}</div>
+          <div className="detail-game-line"><span className="game-mini-icon"><Monitor size={16}/></span><span>{mod.game && mod.game !== 'Uncategorized' && mod.game !== mod.title ? <>{t('For')} <strong>{mod.game}</strong> · </> : null}{mod.platform}</span></div>
+          <div className="detail-stats"><div><Download size={16}/><span><b>{formatCount(mod.downloads)}</b><small>{t('Downloads')}</small></span></div>{mod.updated && <div><CalendarDays size={16}/><span><b>{mod.updated}</b><small>{t('Updated')}</small></span></div>}{mod.creator && <div><UserRound size={16}/><span><b>{mod.creator}</b><small>{t('Creator')}</small></span></div>}</div>
           {pwOn && <PasswordGate mod={mod} hint={settings.password_hint} showReveal={reveal === 'page'} scratch={reveal === 'scratch'} scratchWait={scratchWait} gameSlug={slugify(mod.game)}/>}
           <div className="detail-actions">
-            {mod.downloadUrl && unlock.length > 0 && <a className="mx-btn mx-btn--green mx-btn--lg" href="#unlock"><Download size={18}/><span>Download</span></a>}
-            {mod.downloadUrl && !unlock.length && !pwOn && <a className="mx-btn mx-btn--green mx-btn--lg" href={mod.downloadUrl} data-wait={wait} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={trackDownload}><Download size={18}/><span>Download</span></a>}
-            <button className={`button ${saved ? 'button-saved' : 'button-outline'}`} onClick={() => onToggleSave(mod.id)}>{saved ? <Check size={17}/> : <Bookmark size={17}/>} {saved ? 'Saved' : 'Save'}</button>
+            {mod.downloadUrl && unlock.length > 0 && <a className="mx-btn mx-btn--green mx-btn--lg" href="#unlock"><Download size={18}/><span>{t('Download')}</span></a>}
+            {mod.downloadUrl && !unlock.length && !pwOn && <a className="mx-btn mx-btn--green mx-btn--lg" href={mod.downloadUrl} data-wait={wait} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={trackDownload}><Download size={18}/><span>{t('Download')}</span></a>}
+            <button className={`button ${saved ? 'button-saved' : 'button-outline'}`} onClick={() => onToggleSave(mod.id)}>{saved ? <Check size={17}/> : <Bookmark size={17}/>} {saved ? t('Saved') : t('Save')}</button>
             <ShareButton title={mod.title} text={mod.short}/>
           </div>
         </div>
@@ -68,21 +70,21 @@ export default function DetailPage({ type = 'app', savedIds, onToggleSave }) {
       <div className="detail-layout">
         <div className="detail-main">
           {body ? <ContentHtml content={body} ads={all} inContent={inContent.length ? inContent : autoU} className="detail-body"/> : null}
-          {mod.features?.length > 0 && <section className="detail-list"><h2>Features</h2><ul>{mod.features.map(f => <li key={f}><Check size={16}/>{f}</li>)}</ul></section>}
-          {mod.requirements?.length > 0 && <section className="detail-list"><h2>Requirements</h2><ul>{mod.requirements.map(f => <li key={f}><Check size={16}/>{f}</li>)}</ul></section>}
-          {mod.install?.length > 0 && <section className="detail-list"><h2>How to install</h2><ol>{mod.install.map(s => <li key={s}>{s}</li>)}</ol></section>}
+          {mod.features?.length > 0 && <section className="detail-list"><h2>{t('Features')}</h2><ul>{mod.features.map(f => <li key={f}><Check size={16}/>{f}</li>)}</ul></section>}
+          {mod.requirements?.length > 0 && <section className="detail-list"><h2>{t('Requirements')}</h2><ul>{mod.requirements.map(f => <li key={f}><Check size={16}/>{f}</li>)}</ul></section>}
+          {mod.install?.length > 0 && <section className="detail-list"><h2>{t('How to install')}</h2><ol>{mod.install.map(s => <li key={s}>{s}</li>)}</ol></section>}
           {unlock.length > 0 && <UnlockSteps mod={mod} steps={unlock} finalPage={settings.unlock_final_page !== false} wait={wait} gameSlug={slugify(mod.game)} onDownload={trackDownload}/>}
           <FaqSection faqs={mod.faqs}/>
           {pwOn && reveal === 'page' && <PasswordReveal mod={mod} gameSlug={slugify(mod.game)} scratchWait={scratchWait}/>}
-          {guides.length > 0 && <section className="detail-list related-guides"><h2>Guides for {mod.title}</h2><ul>{guides.map(g => <li key={g.id}><Link to={postHref(g)}><strong>{g.title}</strong></Link>{g.excerpt ? <span> — {g.excerpt}</span> : null}</li>)}</ul></section>}
+          {guides.length > 0 && <section className="detail-list related-guides"><h2>{t('Guides for')} {mod.title}</h2><ul>{guides.map(g => <li key={g.id}><Link to={postHref(g)}><strong>{g.title}</strong></Link>{g.excerpt ? <span> - {g.excerpt}</span> : null}</li>)}</ul></section>}
           <AdSlot placement="mod_bottom" gameSlug={slugify(mod.game)}/>
         </div>
         <aside className="detail-sidebar">
           <AdSlot placement="mod_sidebar" gameSlug={slugify(mod.game)}/>
-          {rows.length > 0 && <div className="lst-card"><h3>Details</h3>{rows.map(([k, v]) => <div className="lst-row" key={k}><span>{k}</span><strong>{v}</strong></div>)}</div>}
+          {rows.length > 0 && <div className="lst-card"><h3>{t('Details')}</h3>{rows.map(([k, v]) => <div className="lst-row" key={k}><span>{k}</span><strong>{v}</strong></div>)}</div>}
         </aside>
       </div>
-      {related.length > 0 && <section className="related-section"><h2>More like this</h2><div className="mods-grid">{related.map(m => <ModCard key={m.id} mod={m} saved={savedIds.includes(m.id)} onToggleSave={onToggleSave}/>)}</div></section>}
+      {related.length > 0 && <section className="related-section"><h2>{t('More like this')}</h2><div className="mods-grid">{related.map(m => <ModCard key={m.id} mod={m} saved={savedIds.includes(m.id)} onToggleSave={onToggleSave}/>)}</div></section>}
     </div>
   </>
 }

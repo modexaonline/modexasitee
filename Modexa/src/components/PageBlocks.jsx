@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import ContentHtml from './ContentHtml'
 import AdBlock from './AdBlock'
 import AdUnit from './AdUnit'

@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
+import { useT } from '../lib/i18n'
 import { Heart, Mail } from 'lucide-react'
 import SocialIcon from './SocialIcon'
 import { socialsOf } from '../lib/social'
@@ -13,6 +14,7 @@ import { useAdsControl } from '../lib/adsControl'
 import { useAdNetworksOn } from '../lib/adsterra'
 
 export default function Footer() {
+  const t = useT()
   const customPages = usePublicPages('show_in_footer')
   const s = useSettings(), ctl = useAdsControl(), nets = useAdNetworksOn()
   const needsConsent = ctl.ready && nets.any && (ctl.cards === 'accept' || ctl.scripts === 'accept')
@@ -28,7 +30,7 @@ export default function Footer() {
       </div>
       {nav.footer.map((g, gi) => <div className="footer-column" key={g.title + gi}><h4>{g.title}</h4>{g.links.map(l => /^https?:/.test(l.to) ? <a key={l.to + l.label} href={l.to} target="_blank" rel="noopener noreferrer">{l.label}</a> : <Link key={l.to + l.label} to={l.to}>{l.label}</Link>)}{gi === nav.footer.length - 1 && customPages.map(page => <Link key={page.slug} to={`/page/${page.slug}`}>{page.title}</Link>)}</div>)}
     </div>
-    <div className="footer-bottom"><span>© {new Date().getFullYear()} {s.site_name || 'Modexa'}. All rights reserved.</span>{needsConsent && <button type="button" className="footer-link-btn" onClick={openConsent}>Cookie settings</button>}<span>Made for the love of games <Heart size={13} className="heart-icon" fill="currentColor"/></span></div>
+    <div className="footer-bottom"><span>© {new Date().getFullYear()} {s.site_name || 'Modexa'}. {t('All rights reserved.')}</span>{needsConsent && <button type="button" className="footer-link-btn" onClick={openConsent}>{t('Cookie settings')}</button>}<span>Made for the love of games <Heart size={13} className="heart-icon" fill="currentColor"/></span></div>
     {s.footer_text && <p className="disclaimer footer-extra">{s.footer_text}</p>}
   </footer>
 }

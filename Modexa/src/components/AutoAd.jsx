@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom'
+import { useLocation } from '../lib/i18nRouter'
 import { useAutoLinks, useAutoBanners, usePageAdsOff } from '../lib/useAds'
 import { AUTO_AD_COPY } from '../lib/monetagDefaults'
 import AdBlock from './AdBlock'

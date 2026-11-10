@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import { Cookie, X } from 'lucide-react'
 import { useSettings } from '../lib/useSettings'
 import { getConsent, setConsent } from '../lib/consent'

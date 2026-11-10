@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 
 // Tiny inline renderer for content strings: **bold**, [label](/internal), [label](https://external)
 export default function RichText({ text = '' }) {

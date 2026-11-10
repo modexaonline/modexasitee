@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import { Compass } from 'lucide-react'
 import SEO from '../components/SEO'
 

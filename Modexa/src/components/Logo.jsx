@@ -1,5 +1,5 @@
 import { Gamepad2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import { useSettings } from '../lib/useSettings'
 
 export default function Logo({ compact = false }) {

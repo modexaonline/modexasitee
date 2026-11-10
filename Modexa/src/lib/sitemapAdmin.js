@@ -79,3 +79,19 @@ export function editSitemap({ add = [], removeIf = null } = {}) {
   }
   const p = chain.then(run, run); chain = p.catch(() => {}); return p
 }
+
+// ---- default behaviour: every published page is added automatically; pages removed by hand stay removed ----
+const PREFS = 'sitemap_prefs'
+async function readRemoved() {
+  const { data } = await supabase.from('site_content').select('data').eq('key', PREFS).maybeSingle()
+  return new Set(Array.isArray(data?.data?.removed) ? data.data.removed : [])
+}
+export async function markSitemapRemoved(path, removed) {
+  const set = await readRemoved(), p = normPath(path)
+  if (removed) set.add(p); else set.delete(p)
+  await supabase.from('site_content').upsert({ key: PREFS, data: { removed: [...set] }, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+}
+export async function autoAddToSitemap(path) {
+  const p = normPath(path); if ((await readRemoved()).has(p)) return { added: false, skipped: true }
+  const r = await setInSitemap(p, true); return { added: r.changed, skipped: false }
+}

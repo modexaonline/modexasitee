@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import { Check, Lock, Download, ExternalLink, RotateCcw } from 'lucide-react'
 import AdSlot from './AdSlot'
 import SocialIcon from './SocialIcon'

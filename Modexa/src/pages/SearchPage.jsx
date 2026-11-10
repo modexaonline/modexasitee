@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from '../lib/i18nRouter'
 import SEO from '../components/SEO'
 import SearchBox from '../components/SearchBox'
 import SafeImg from '../components/SafeImg'
 import PageHero from '../components/PageHero'
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import { useSearchItems, TYPE_LABEL } from '../lib/useSearchItems'
 import { search, highlightParts } from '../lib/search'
 

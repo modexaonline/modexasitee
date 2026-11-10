@@ -130,3 +130,12 @@
 .adm-tags{border:1px dashed #cbd5e1;border-radius:12px;padding:10px 14px;background:#f8fafc}.adm-tags summary{cursor:pointer;font-weight:600}
 .adm-tags pre{margin:10px 0 0;white-space:pre-wrap;word-break:break-all;font-size:12.5px;line-height:1.6;max-height:320px;overflow:auto}
 html[data-theme="dark"] .adm-og-card{background:#161616;border-color:#2c2c2c}html[data-theme="dark"] .adm-og-txt b{color:#f3f4f6}html[data-theme="dark"] .adm-og-txt p{color:#d1d5db}html[data-theme="dark"] .adm-tags{background:#141414;border-color:#333}
+/* v40: share menu */
+.adm-share-menu{position:absolute;z-index:40;top:calc(100% + 6px);inset-inline-start:0;min-width:250px;padding:8px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.16);display:grid;gap:2px}
+.adm-share-url input{width:100%;font-size:12.5px;padding:7px 9px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:4px}
+.adm-share-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:8px 10px;border:0;background:transparent;border-radius:8px;font-size:13.5px;color:#111;text-decoration:none;cursor:pointer}.adm-share-item:hover{background:#f3f4f6}
+.adm-tr-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #eef0f3}
+
+.adm-langtabs{display:flex;gap:6px;overflow-x:auto;padding:6px 2px 10px;margin:0 0 6px;-webkit-overflow-scrolling:touch}
+.adm-langtabs button{flex:0 0 auto;padding:8px 14px;border:1px solid #e5e7eb;background:#fff;border-radius:999px;font-size:13.5px;cursor:pointer;color:#111}
+.adm-langtabs button.on{background:#111827;color:#fff;border-color:#111827}

@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from '../lib/i18nRouter'
 import { Mail, ArrowUpRight, FileText, ShieldCheck, Cookie, Scale, Users, HelpCircle, Info, Clock3 } from 'lucide-react'
 import SEO from '../components/SEO'
 import PageHero from '../components/PageHero'

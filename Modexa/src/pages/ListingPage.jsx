@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useT } from '../lib/i18n'
 import { Search, X } from 'lucide-react'
 import SEO from '../components/SEO'
 import SeoContent from '../components/SeoContent'
@@ -13,6 +14,7 @@ import { toHtml } from '../lib/contentHtml'
 
 // One page for both "Apps" and "Games", same features, same editor in Admin.
 export default function ListingPage({ type = 'app', savedIds, onToggleSave }) {
+  const t = useT()
   const key = type === 'game' ? 'games' : 'apps'
   const L = usePageContent('listing:' + key, LISTING[key])
   const { items } = useModsState()
@@ -28,13 +30,13 @@ export default function ListingPage({ type = 'app', savedIds, onToggleSave }) {
   }, [all, prepared, q, cat, sort])
   const name = type === 'game' ? 'Games' : 'Apps'
   return <>
-    <SEO fullTitle={L.seoTitle} description={L.description} pageType="CollectionPage" breadcrumbs={[{ label: 'Home', to: '/' }, { label: name, to: '/' + key }]} faqs={L.faqs}/>
+    <SEO i18n={{ kind: 'content', key: 'listing:' + key }} fullTitle={L.seoTitle} description={L.description} pageType="CollectionPage" breadcrumbs={[{ label: t('Home'), to: '/' }, { label: name, to: '/' + key }]} faqs={L.faqs}/>
     <PageHero eyebrow={name.toUpperCase()} title={L.h1 || name} description={L.description}/>
     <section className="directory-section"><div className="container">
       <div className="listing-toolbar">
         <div className="directory-search"><Search size={18}/><input value={q} onChange={e => setQ(e.target.value)} placeholder={`Search ${name.toLowerCase()}…`} aria-label={`Search ${name.toLowerCase()}`}/>{q && <button type="button" onClick={() => setQ('')} aria-label="Clear"><X size={15}/></button>}</div>
-        {cats.length > 2 && <div className="chip-row" role="tablist">{cats.map(c => <button key={c} role="tab" aria-selected={cat === c} className={`chip ${cat === c ? 'active' : ''}`} onClick={() => setCat(c)}>{c}</button>)}</div>}
-        <select className="listing-sort" value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort"><option value="new">Newest</option><option value="featured">Featured</option><option value="downloads">Most downloaded</option><option value="az">A – Z</option></select>
+        {cats.length > 2 && <div className="chip-row" role="tablist">{cats.map(c => <button key={c} role="tab" aria-selected={cat === c} className={`chip ${cat === c ? 'active' : ''}`} onClick={() => setCat(c)}>{c === 'All' ? t('All') : c}</button>)}</div>}
+        <select className="listing-sort" value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort"><option value="new">{t('Newest')}</option><option value="featured">{t('Featured')}</option><option value="downloads">{t('Most downloaded')}</option><option value="az">A - Z</option></select>
       </div>
       <p className="results-count-line">{list.length} {list.length === 1 ? type : name.toLowerCase()}</p>
       <ModGrid mods={list} savedIds={savedIds} onToggleSave={onToggleSave}/>

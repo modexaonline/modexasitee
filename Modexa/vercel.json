@@ -45,6 +45,22 @@
       "destination": "/api/seo?f=sitemap"
     },
     {
+      "source": "/:lang(id|pt|es|ar|tr|hi|vi|bn|ur|th)/blog/:slug",
+      "destination": "/api/og?t=blog&slug=:slug&lang=:lang"
+    },
+    {
+      "source": "/:lang(id|pt|es|ar|tr|hi|vi|bn|ur|th)/guide/:slug",
+      "destination": "/api/og?t=guide&slug=:slug&lang=:lang"
+    },
+    {
+      "source": "/:lang(id|pt|es|ar|tr|hi|vi|bn|ur|th)/games/:slug",
+      "destination": "/api/og?t=games&slug=:slug&lang=:lang"
+    },
+    {
+      "source": "/:lang(id|pt|es|ar|tr|hi|vi|bn|ur|th)/apps/:slug",
+      "destination": "/api/og?t=apps&slug=:slug&lang=:lang"
+    },
+    {
       "source": "/blog/:slug",
       "destination": "/api/og?t=blog&slug=:slug"
     },

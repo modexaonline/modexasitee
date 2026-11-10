@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import { Bookmark, Download, ArrowUpRight, Check } from 'lucide-react'
 import { formatCount } from '../data/mods'
 import SafeImg from './SafeImg'

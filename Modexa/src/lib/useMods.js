@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useHiddenPaths } from './siteContent'
 import { isPathHidden } from './hidden'
+import { useLang, useTrMap, overlayMod } from './i18n'
 import { mods as rawDemo } from '../data/mods'
 const demoMods = rawDemo.map(m => ({ ...m, type: 'app', content: '', href: '/apps/' + m.slug }))
 import { supabase, supabaseConfigured } from './supabase'
@@ -41,9 +42,13 @@ function load() {
 export function refreshMods() { started = false; if (supabaseConfigured) emit({ ...state, loading: true }); load() }
 
 export function useModsState() {
-  const [s, setS] = useState(state), hidden = useHiddenPaths()
+  const [s, setS] = useState(state), hidden = useHiddenPaths(), lang = useLang(), tr = useTrMap(lang)
   useEffect(() => { listeners.add(setS); setS(state); load(); return () => { listeners.delete(setS) } }, [])
-  return useMemo(() => hidden.length ? { ...s, items: s.items.filter(m => !isPathHidden(hidden, m.href)) } : s, [s, hidden])
+  return useMemo(() => {
+    let items = hidden.length ? s.items.filter(m => !isPathHidden(hidden, m.href)) : s.items
+    if (lang !== 'en') items = items.map(m => overlayMod(m, tr?.['mod:' + m.id]))   // translated title, text, FAQs and SEO fields
+    return items === s.items ? s : { ...s, items }
+  }, [s, hidden, lang, tr])
 }
 
 export default function useModsData() { return useModsState().items }

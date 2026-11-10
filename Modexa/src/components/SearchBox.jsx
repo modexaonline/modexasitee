@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useT } from '../lib/i18n'
+import { useNavigate } from '../lib/i18nRouter'
 import { Search, X, ArrowRight } from 'lucide-react'
 import SafeImg from './SafeImg'
 import { useSearchItems, TYPE_LABEL } from '../lib/useSearchItems'
@@ -7,6 +8,7 @@ import { search, highlightParts } from '../lib/search'
 
 // Live suggestions across apps, games, guides and blog posts. Typo tolerant; narrows as the spelling gets complete.
 export default function SearchBox({ placeholder = 'Search apps, games, guides…', className = '', variant = 'header', initial = '', autoFocus = false, onDone, big = false }) {
+  const t = useT()
   const [q, setQ] = useState(initial), [open, setOpen] = useState(false), [idx, setIdx] = useState(-1)
   const nav = useNavigate(), box = useRef(null), input = useRef(null)
   const { items } = useSearchItems()
@@ -23,7 +25,7 @@ export default function SearchBox({ placeholder = 'Search apps, games, guides…
   return <div ref={box} className={`searchbox searchbox-${variant} ${big ? 'is-big' : ''} ${className}`} role="search">
     <form onSubmit={submit} autoComplete="off">
       <Search size={big ? 20 : 16} aria-hidden="true"/>
-      <input ref={input} autoFocus={autoFocus} value={q} onChange={e => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onKeyDown={onKey} placeholder={placeholder} aria-label="Search" role="combobox" aria-expanded={open && results.length > 0} aria-autocomplete="list" enterKeyHint="search"/>
+      <input ref={input} autoFocus={autoFocus} value={q} onChange={e => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onKeyDown={onKey} placeholder={t(placeholder)} aria-label="Search" role="combobox" aria-expanded={open && results.length > 0} aria-autocomplete="list" enterKeyHint="search"/>
       {q && <button type="button" className="searchbox-clear" onClick={() => { setQ(''); input.current?.focus() }} aria-label="Clear search"><X size={15}/></button>}
       {variant === 'header' && !q && <kbd>/</kbd>}
       {big && <button className="searchbox-go" type="submit">Search</button>}

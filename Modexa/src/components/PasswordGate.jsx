@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '../lib/i18nRouter'
 import { KeyRound, ArrowDown } from 'lucide-react'
 import ScratchReveal from './ScratchReveal'
 import { passwordFor, grantAccess, DEFAULT_HINT } from '../lib/password'

@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import ErrorBoundary from './components/ErrorBoundary'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Navigate as RawNavigate } from 'react-router-dom'
+import { useLang, useEnabledLangs, langInfo } from './lib/i18n'
+import { useSettings } from './lib/useSettings'
+import { Routes, Route, Navigate, useLocation } from './lib/i18nRouter'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import { PageSkeleton } from './components/Skeleton'
@@ -26,15 +29,20 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem('modexa-saved') || '[]') } catch { return [] }
   })
   const location = useLocation(), hidden = useHiddenPaths(), contentReady = useContentReady()
+  const lang = useLang(), settings = useSettings(), enabledLangs = useEnabledLangs()
+  // <html lang dir> follows the page language (Arabic and Urdu read right to left)
+  useEffect(() => { const L = langInfo(lang); document.documentElement.lang = L.hreflang; document.documentElement.dir = L.dir || 'ltr' }, [lang])
   // after the first screen is up, quietly fetch the pages people open next so they open instantly
   useEffect(() => { const go = () => { import('./pages/DetailPage'); import('./pages/ListingPage'); import('./pages/BlogPages') }; const id = window.requestIdleCallback ? window.requestIdleCallback(go, { timeout: 4000 }) : setTimeout(go, 2500); return () => { window.cancelIdleCallback ? window.cancelIdleCallback(id) : clearTimeout(id) } }, [])
   useEffect(() => { try { localStorage.setItem('modexa-saved', JSON.stringify(savedIds)) } catch {} }, [savedIds])
   useEffect(() => { applyTheme(location.pathname.startsWith('/admin') ? 'light' : getTheme()) }, [location.pathname])
   useEffect(() => { if (!location.hash) window.scrollTo({ top: 0, behavior: 'instant' }) }, [location.pathname])
   if (location.pathname.startsWith('/admin')) return <ErrorBoundary fullscreen><Suspense fallback={<div className="admin-center">Loading admin…</div>}><Admin /></Suspense></ErrorBoundary>
+  // a language that is switched off (or not set up yet) sends visitors to the normal English page
+  if (lang !== 'en' && settings.__loaded && !enabledLangs.some(l => l.code === lang)) return <RawNavigate to={location.pathname + location.search + location.hash} replace/>
   const onToggleSave = id => setSavedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   return <Layout savedCount={savedIds.length}>
-    <Suspense fallback={<PageSkeleton/>}>{!contentReady ? <PageSkeleton/> : isPathHidden(hidden, location.pathname) ? <NotFoundPage hidden/> : <Routes>
+    <Suspense fallback={<PageSkeleton/>}>{!contentReady ? <PageSkeleton/> : isPathHidden(hidden, location.pathname) ? <NotFoundPage hidden/> : <Routes location={location}>
       <Route path="/" element={<HomePage savedIds={savedIds} onToggleSave={onToggleSave}/>}/>
       <Route path="/apps" element={<ListingPage type="app" savedIds={savedIds} onToggleSave={onToggleSave}/>}/>
       <Route path="/apps/:slug" element={<DetailPage type="app" savedIds={savedIds} onToggleSave={onToggleSave}/>}/>

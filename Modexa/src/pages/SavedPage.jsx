@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import { Bookmark } from 'lucide-react'
 import SEO from '../components/SEO'
 import SeoContent from '../components/SeoContent'

@@ -4,7 +4,13 @@ import { supabase } from '../lib/supabase'
 import { refreshMods } from '../lib/useMods'
 import { refreshPosts } from '../lib/usePosts'
 import { useSettings } from '../lib/useSettings'
-import { getSitemapState, setInSitemap, normPath } from '../lib/sitemapAdmin'
+import { getSitemapState, setInSitemap, normPath, markSitemapRemoved, autoAddToSitemap, editSitemap } from '../lib/sitemapAdmin'
+import ShareLinkButton from './ShareLinkButton'
+import TranslationsCard from './TranslationsCard'
+import ManualLang from './ManualLang'
+import { LANGS } from '../lib/i18n'
+import { translateAndSave, sourceOf } from '../lib/translate'
+import { withLang } from '../lib/i18n'
 import RichEditor from './RichEditor'
 import { ImageField, Counter, slugify, FaqEditor, ListBox, cleanFaqs } from './fields'
 import { cleanList } from '../lib/formatText'
@@ -33,6 +39,7 @@ const blank = kind => kind === 'posts'
 
 export default function AdminContent({ kind, onNotice, onError }) {
   const cfg = CFG[kind], settings = useSettings()
+  const [lang, setLang] = useState('en')
   const [rows, setRows] = useState([]), [loading, setLoading] = useState(true), [editing, setEditing] = useState(null), [busy, setBusy] = useState(false)
   const [q, setQ] = useState(''), [fs, setFs] = useState('all'), [ads, setAds] = useState([]), [gameList, setGameList] = useState([])
   const [sm, setSm] = useState({ paths: new Set(), ready: false }), [smBusy, setSmBusy] = useState('')
@@ -45,13 +52,26 @@ export default function AdminContent({ kind, onNotice, onError }) {
     if (r.error) { onError(r.error.message); return }
     setRows(r.data || []); setAds(a.data || []); setGameList(g.data || [])
   }
-  useEffect(() => { setEditing(null); setQ(''); setFs('all'); load(); getSitemapState().then(x => setSm({ paths: x.paths, ready: true })).catch(() => setSm({ paths: new Set(), ready: false })) }, [kind])
+  useEffect(() => { setLang('en'); setEditing(null); setQ(''); setFs('all'); load(); getSitemapState().then(x => setSm({ paths: x.paths, ready: true })).catch(() => setSm({ paths: new Set(), ready: false })) }, [kind])
+  // After a published save: add the page to the sitemap (default, unless it was removed by hand), then translate it into every enabled language.
+  async function afterSave(row) {
+    if (row.status !== 'published' || !row.id) return
+    const path = cfg.href(row), tk = kind === 'posts' ? 'post' : 'mod'
+    if (!row.noindex) { try { const r = await autoAddToSitemap(path); if (r.added) { onNotice(`Saved. ${path} was added to the sitemap automatically.`); getSitemapState().then(x => setSm({ paths: x.paths, ready: true })).catch(() => {}) } } catch {} }
+    const langs = settings.i18n_enabled && settings.i18n_auto && Array.isArray(settings.i18n_langs) ? settings.i18n_langs : []
+    if (!langs.length) return
+    onNotice(`Saved. Translating into ${langs.length} languages in the background. You can keep working.`)
+    const added = []; let failed = ''
+    for (const lang of langs) { try { const r = await translateAndSave(tk, row.id, lang, sourceOf(tk, row)); if (r === 'done') added.push(withLang(path, lang)) } catch (e) { failed = e.message; if (/quota|rate limit|Admins only|GEMINI_API_KEY/i.test(e.message)) break } }
+    if (added.length && !row.noindex) await editSitemap({ add: added }).catch(() => {})
+    if (failed) onError('Translation stopped: ' + failed); else onNotice(`Translated into ${added.length} language${added.length === 1 ? '' : 's'} and added to the sitemap.`)
+  }
   async function toggleSitemap(r) {
     const path = normPath(cfg.href(r)), listed = sm.paths.has(path)
     if (!listed && r.status !== 'published') return onError('Publish this ' + cfg.one + ' first, drafts cannot go in the sitemap.')
     if (!listed && r.noindex) return onError('This page is set to noindex, so it is not added to the sitemap. Turn noindex off in its SEO settings first.')
     setSmBusy(r.id)
-    try { const res = await setInSitemap(path, !listed); setSm({ paths: res.paths, ready: true }); onNotice(listed ? `Removed ${path} from the sitemap.` : `Added ${res.url} to the sitemap. It is live now (CDN may take up to 5 minutes). Resubmit sitemap.xml in Google Search Console if needed.`) }
+    try { const res = await setInSitemap(path, !listed); await markSitemapRemoved(path, listed).catch(() => {}); setSm({ paths: res.paths, ready: true }); onNotice(listed ? `Removed ${path} from the sitemap.` : `Added ${res.url} to the sitemap. It is live now (CDN may take up to 5 minutes). Resubmit sitemap.xml in Google Search Console if needed.`) }
     catch (er) { onError(er.message || 'Could not update the sitemap.') }
     setSmBusy('')
   }
@@ -73,10 +93,13 @@ export default function AdminContent({ kind, onNotice, onError }) {
     if (kind !== 'posts' && ('password_mode' in payload || 'download_password' in payload)) { payload.download_password = String(payload.download_password || '').trim(); if (payload.download_password && !isPin(payload.download_password)) return onError('The download password must be exactly 4 digits (or leave it empty for an automatic one).'); payload.password_mode = payload.password_mode || 'default' }
     if (kind !== 'posts' && ('unlock_mode' in payload || 'unlock_steps' in payload)) { if (hasBadStep(payload.unlock_steps)) return onError('Every unlock step link must start with https://'); payload.unlock_steps = cleanSteps(payload.unlock_steps); payload.unlock_mode = payload.unlock_mode || 'default'; if (payload.unlock_mode === 'custom' && !payload.unlock_steps.length) return onError('Add at least one unlock step, or choose another unlock option.') }
     setBusy(true)
-    const { error } = id ? await supabase.from(cfg.table).update(payload).eq('id', id) : await supabase.from(cfg.table).insert(payload)
+    let savedId = id, error
+    if (id) ({ error } = await supabase.from(cfg.table).update(payload).eq('id', id))
+    else { const ins = await supabase.from(cfg.table).insert(payload).select('id').single(); error = ins.error; savedId = ins.data?.id }
     setBusy(false)
     if (error) return onError(/duplicate key/i.test(error.message) ? 'This URL slug is already used. Change the slug.' : error.message)
     onNotice(id ? 'Saved.' : 'Created.'); refresh(); setEditing(null); load()
+    afterSave({ ...payload, id: savedId })
   }
   async function toggle(r) { const next = r.status === 'published' ? 'draft' : 'published'; const { error } = await supabase.from(cfg.table).update({ status: next, ...(next === 'published' && !r.published_at ? { published_at: today() } : {}) }).eq('id', r.id); if (error) return onError(error.message); onNotice(next === 'published' ? 'Published, live on the site.' : 'Moved to draft.'); refresh(); load() }
   async function remove(r) { if (!confirm(`Delete “${r.title}” permanently?`)) return; const { error } = await supabase.from(cfg.table).delete().eq('id', r.id); if (error) return onError(error.message); onNotice('Deleted.'); refresh(); load() }
@@ -88,13 +111,17 @@ export default function AdminContent({ kind, onNotice, onError }) {
     const listVal = k => Array.isArray(e[k]) ? e[k].join('\n') : (e[k] || '')
     return <form className="adm" onSubmit={save}>
       <div className="adm-head"><div><h2>{e.id ? `Edit ${cfg.one}` : `New ${cfg.one}`}</h2><p>{e.id ? e.title : 'Write in Compose view, or switch to HTML to edit code and add your ad scripts.'}</p></div>
-        <div className="adm-actions"><button type="button" className="adm-btn" onClick={() => setEditing(null)}><X size={15}/> Close</button><button className="adm-btn primary" disabled={busy}>{busy ? 'Saving…' : e.status === 'published' ? 'Save & publish' : 'Save'}</button></div></div>
-      <div className="adm-split">
+        <div className="adm-actions"><button type="button" className="adm-btn" onClick={() => { setEditing(null); setLang('en') }}><X size={15}/> Close</button><button className="adm-btn primary" disabled={busy}>{busy ? 'Saving…' : e.status === 'published' ? 'Save & publish' : 'Save'}</button></div></div>
+      {settings.i18n_enabled && e.id && <div className="adm-langtabs" role="tablist" aria-label="Language">
+        {[['en', 'English'], ...LANGS.filter(l => (settings.i18n_langs || []).includes(l.code)).map(l => [l.code, l.name])].map(([c, n]) => <button type="button" key={c} role="tab" aria-selected={lang === c} className={lang === c ? 'on' : ''} onClick={() => setLang(c)}>{n}</button>)}</div>}
+      {settings.i18n_enabled && !e.id && <p className="adm-sub">Save this {cfg.one} once, then language tabs (Indonesian, Spanish and more) appear here so you can write each language by hand.</p>}
+      {lang !== 'en' && e.id && <ManualLang key={lang + e.id} kind={kind === 'posts' ? 'post' : 'mod'} en={e} lang={lang} path={cfg.href(e)} ads={ads} onNotice={onNotice} onError={onError}/>}
+      <div className="adm-split" style={lang !== 'en' && e.id ? { display: 'none' } : undefined}>
         <div className="adm">
           <section className="adm-card">
             <label className="adm-field"><span>Title *</span><input required value={e.title} maxLength={160} onChange={ev => set({ title: ev.target.value, slug: e.id ? e.slug : slugify(ev.target.value) })} placeholder={isPost ? 'Post title' : `${cfg.one === 'game' ? 'Game' : 'App'} name`}/></label>
             <div className="adm-grid2" style={{ marginTop: 14 }}>
-              <label className="adm-field"><span>URL slug</span><input value={e.slug} onChange={ev => set({ slug: slugify(ev.target.value) })}/><span className="adm-hint">{cfg.href({ ...e, slug: e.slug || 'slug' })}</span></label>
+              <label className="adm-field"><span>URL slug</span><input value={e.slug} onChange={ev => set({ slug: String(ev.target.value).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]+/g, '').replace(/-{2,}/g, '-') })} onBlur={() => set({ slug: slugify(e.slug) })} autoCapitalize="none" spellCheck={false}/><span className="adm-hint">{cfg.href({ ...e, slug: e.slug || 'slug' })}</span></label>
               {isPost ? <div className="adm-field"><span>Type</span><div className="adm-seg"><button type="button" className={e.post_type === 'blog' ? 'on' : ''} onClick={() => set({ post_type: 'blog' })}>Blog</button><button type="button" className={e.post_type === 'guide' ? 'on' : ''} onClick={() => set({ post_type: 'guide' })}>Guide</button></div></div>
                 : <Pick label="Platform" value={e.platform} onChange={v => set({ platform: v })} options={PLATFORMS}/>}
             </div>
@@ -135,7 +162,8 @@ export default function AdminContent({ kind, onNotice, onError }) {
             <label className="adm-field"><span>Status</span><select value={e.status} onChange={ev => set({ status: ev.target.value })}><option value="draft">Draft (hidden)</option><option value="published">Published (live)</option></select></label>
             <label className="adm-field" style={{ marginTop: 12 }}><span>Date</span><input type="date" value={(e.published_at || '').slice(0, 10)} onChange={ev => set({ published_at: ev.target.value })}/></label>
             {isPost && <label className="adm-check" style={{ marginTop: 14 }}><input type="checkbox" checked={e.ads_enabled !== false} onChange={ev => set({ ads_enabled: ev.target.checked })}/> Show ads on this post <small style={{ display: 'block', color: '#6b7280', fontWeight: 400 }}>ON = Monetag ads load automatically (popunder, push, banner, direct links in the right places). Nothing else to set up.</small></label>}
-            <div className="adm-actions" style={{ marginTop: 16 }}><button className="adm-btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>{e.id && <a className="adm-btn" href={cfg.href(e)} target="_blank" rel="noopener noreferrer"><ExternalLink size={14}/> View</a>}</div></section>
+            <div className="adm-actions" style={{ marginTop: 16 }}><button className="adm-btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>{e.id && <a className="adm-btn" href={cfg.href(e)} target="_blank" rel="noopener noreferrer"><ExternalLink size={14}/> View</a>}{e.id && e.slug && <ShareLinkButton small={false} path={cfg.href(e)} title={e.title} onNotice={onNotice}/>}</div>{e.slug && <p className="adm-sub" style={{ marginTop: 10 }}>Link: <b>{'modexa.online' + cfg.href(e)}</b></p>}</section>
+          {e.id && <TranslationsCard kind={kind === 'posts' ? 'post' : 'mod'} row={e} path={cfg.href(e)} settings={settings} onNotice={onNotice} onError={onError}/>}
           <section className="adm-card"><h3>Cover image</h3><ImageField label="" value={e.cover_image} onChange={v => set({ cover_image: v })} onError={onError} hint="Landscape, at least 900px wide."/></section>
           {isPost && <section className="adm-card"><h3>Details</h3><label className="adm-field"><span>Category</span><input value={e.category || ''} onChange={ev => set({ category: ev.target.value })} placeholder="Tips, News…"/></label>
             <label className="adm-field" style={{ marginTop: 12 }}><span>Related game (optional)</span><select value={e.game_slug || ''} onChange={ev => set({ game_slug: ev.target.value })}><option value="">None</option>{gameList.map(g => <option key={g.slug} value={g.slug}>{g.title}</option>)}</select></label></section>}
@@ -156,7 +184,7 @@ export default function AdminContent({ kind, onNotice, onError }) {
           {kind === 'posts' && <td><span className={`adm-pill ${r.post_type === 'guide' ? 'dark' : ''}`}>{r.post_type === 'guide' ? 'Guide' : 'Blog'}</span></td>}
           <td><span className={`adm-pill ${r.status === 'published' ? 'green' : 'amber'}`}>{r.status === 'published' ? 'Published' : 'Draft'}</span></td>
           <td style={{ color: '#6b7280' }}>{(r.published_at || r.created_at || '').slice(0, 10)}</td>
-          <td><div className="adm-actions"><button className="adm-btn sm primary" onClick={() => setEditing({ ...blank(kind), ...r })}><Pencil size={14}/> Edit</button><button className="adm-btn sm" onClick={() => toggle(r)} title={r.status === 'published' ? 'Unpublish' : 'Publish'}>{r.status === 'published' ? <EyeOff size={14}/> : <Eye size={14}/>}</button><button className={`adm-btn sm adm-sitemap-btn ${sm.paths.has(normPath(cfg.href(r))) ? 'on' : ''}`} disabled={smBusy === r.id} onClick={() => toggleSitemap(r)} title={sm.paths.has(normPath(cfg.href(r))) ? 'This URL is in sitemap.xml. Click to remove it.' : r.status === 'published' ? 'Add this URL to sitemap.xml' : 'Publish first, then add to sitemap'}>{sm.paths.has(normPath(cfg.href(r))) ? <><CheckCircle2 size={14}/> In sitemap</> : <><FilePlus2 size={14}/> {smBusy === r.id ? 'Adding…' : 'Add to sitemap'}</>}</button><a className="adm-btn sm" href={cfg.href(r)} target="_blank" rel="noopener noreferrer" title="View"><ExternalLink size={14}/></a><button className="adm-btn sm" onClick={() => duplicate(r)} title="Duplicate"><Copy size={14}/></button><button className="adm-btn sm danger" onClick={() => remove(r)} title="Delete"><Trash2 size={14}/></button></div></td>
+          <td><div className="adm-actions"><button className="adm-btn sm primary" onClick={() => setEditing({ ...blank(kind), ...r })}><Pencil size={14}/> Edit</button><button className="adm-btn sm" onClick={() => toggle(r)} title={r.status === 'published' ? 'Unpublish' : 'Publish'}>{r.status === 'published' ? <EyeOff size={14}/> : <Eye size={14}/>}</button><button className={`adm-btn sm adm-sitemap-btn ${sm.paths.has(normPath(cfg.href(r))) ? 'on' : ''}`} disabled={smBusy === r.id} onClick={() => toggleSitemap(r)} title={sm.paths.has(normPath(cfg.href(r))) ? 'This URL is in sitemap.xml. Click to remove it.' : r.status === 'published' ? 'Add this URL to sitemap.xml' : 'Publish first, then add to sitemap'}>{sm.paths.has(normPath(cfg.href(r))) ? <><CheckCircle2 size={14}/> In sitemap</> : <><FilePlus2 size={14}/> {smBusy === r.id ? 'Adding…' : 'Add to sitemap'}</>}</button><a className="adm-btn sm" href={cfg.href(r)} target="_blank" rel="noopener noreferrer" title="View"><ExternalLink size={14}/></a><ShareLinkButton path={cfg.href(r)} title={r.title} label="" onNotice={onNotice}/><button className="adm-btn sm" onClick={() => duplicate(r)} title="Duplicate"><Copy size={14}/></button><button className="adm-btn sm danger" onClick={() => remove(r)} title="Delete"><Trash2 size={14}/></button></div></td>
         </tr>)}</tbody></table></div>}
     </section>
   </div>

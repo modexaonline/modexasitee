@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../lib/i18nRouter'
 import { useState } from 'react'
 import { CheckCircle2, UploadCloud, Send, ShieldCheck } from 'lucide-react'
 import SEO from '../components/SEO'
