@@ -1,3 +1,4 @@
+import { isInternalHref } from '../lib/linkRel'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bold, Italic, Underline, List, ListOrdered, Quote, AlignLeft, AlignCenter, AlignRight, AlignJustify, Link2, Image as ImageIcon, MousePointerClick, Megaphone, Code2, Undo2, Redo2, RemoveFormatting, Wand2, Sparkles, Search, X, Upload, Type } from 'lucide-react'
 import { toHtml, wrapEmbeds, embedHtml, guessSize, decodeCode } from '../lib/contentHtml'
@@ -104,9 +105,9 @@ export default function RichEditor({ value, onChange, ads = [], onError, onNotic
   async function pickFile(e, forButton) { const f = e.target.files?.[0]; if (!f) return; D({ busy: true }); try { const u = await uploadImage(f); D(forButton ? { img: u, busy: false } : { url: u, busy: false }) } catch (er) { D({ busy: false }); onError?.(er.message) } e.target.value = '' }
   function confirmDlg() {
     const d = dlg
-    if (d.type === 'link') { if (!/^(https?:\/\/|\/|mailto:)/i.test(d.url)) return onError?.('Link must start with https://'); insertHtml(`<a href="${escapeHtml(d.url)}"${/^https?:/.test(d.url) ? ' target="_blank" rel="noopener noreferrer nofollow"' : ''}>${escapeHtml(d.text || d.url)}</a>`) }
+    if (d.type === 'link') { if (!/^(https?:\/\/|\/|mailto:)/i.test(d.url)) return onError?.('Link must start with https://'); insertHtml(`<a href="${escapeHtml(d.url)}"${/^https?:/.test(d.url) && !isInternalHref(d.url) ? ' target="_blank" rel="noopener noreferrer nofollow"' : ''}>${escapeHtml(d.text || d.url)}</a>`) }
     if (d.type === 'image') { if (!/^https?:\/\//i.test(d.url)) return onError?.('Add an image link or upload a file first.'); insertHtml(`<p style="text-align:${d.align}"><img src="${escapeHtml(d.url)}" alt="${escapeHtml(d.alt)}" style="width:${d.w}%;max-width:100%"></p>`) }
-    if (d.type === 'button') { if (!/^https?:\/\//i.test(d.url)) return onError?.('Button link must start with https://'); insertHtml(buttonHtml({ tpl: d.tpl, label: d.label, href: d.url, wait: d.wait, img: d.tab === 'img' ? d.img : '', alt: d.label })) }
+    if (d.type === 'button') { if (!/^(https?:\/\/|\/(?!\/))/i.test(d.url)) return onError?.('Button link must start with https:// (or / for a page on this site)'); insertHtml(buttonHtml({ tpl: d.tpl, label: d.label, href: d.url, wait: d.wait, img: d.tab === 'img' ? d.img : '', alt: d.label })) }
     if (d.type === 'code') { if (!d.code.trim()) return onError?.('Paste your code first.'); const g = guessSize(d.code); insertHtml(embedHtml(d.code, +d.cw || g.w, +d.ch || g.h)) }
     setDlg(null)
   }

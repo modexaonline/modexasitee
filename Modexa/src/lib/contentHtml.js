@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify'
 import { isHtml, mdToHtml } from './formatText'
 import { slugify } from './format'
+import { fixAnchors } from './linkRel'
 
 export const toHtml = content => isHtml(content) ? String(content) : mdToHtml(content)
 const EMBED = new Set(['SCRIPT', 'INS', 'NOSCRIPT', 'IFRAME'])
@@ -55,6 +56,7 @@ export function buildParts(content, { inContent = [] } = {}) {
     if (n.classList.contains('mx-ad')) { flush(); parts.push({ ad: (n.getAttribute('data-ad') || '').toLowerCase() }); continue }
     if (n.classList.contains('mx-embed')) { flush(); parts.push({ embed: { code: decodeCode(n.getAttribute('data-code')), w: +n.getAttribute('data-w') || 0, h: +n.getAttribute('data-h') || 250 } }); continue }
     if (n.tagName === 'H2' && !n.id) n.id = headingSlug(n.textContent)
+    fixAnchors(n)
     buf += DOMPurify.sanitize(n.outerHTML, { ADD_ATTR: ['target', 'rel', 'data-wait', 'loading'], ADD_TAGS: ['figure', 'figcaption'] })
     if (n.tagName === 'P' && n.textContent.trim()) { p++; if (points.has(p)) { flush(); parts.push({ units: points.get(p) }) } }
   }

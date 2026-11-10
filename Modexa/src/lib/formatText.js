@@ -1,3 +1,4 @@
+import { isInternalHref } from './linkRel'
 // Pure helpers (no DOM) used by the editor, the public renderer and tests.
 // RULE: formatting may add/remove whitespace and structure (headings, paragraphs, lists) but NEVER changes a word.
 const ZW = /[\u200B-\u200D\uFEFF]/g
@@ -83,8 +84,8 @@ export function autoFormatText(raw) {
 export function mdToHtml(md = '') {
   const inline = s => escapeHtml(s)
     .replace(/!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g, '<img src="$2" alt="$1" loading="lazy">')
-    .replace(/\[btn:([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a class="mx-btn mx-btn--green" href="$2" data-wait="30" target="_blank" rel="sponsored nofollow noopener noreferrer">$1</a>')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer nofollow">$1</a>')
+    .replace(/\[btn:([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, l, u) => isInternalHref(u) ? `<a class="mx-btn mx-btn--green" href="${u}">${l}</a>` : `<a class="mx-btn mx-btn--green" href="${u}" data-wait="30" target="_blank" rel="sponsored nofollow noopener noreferrer">${l}</a>`)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, l, u) => isInternalHref(u) ? `<a href="${u}">${l}</a>` : `<a href="${u}" target="_blank" rel="noopener noreferrer nofollow">${l}</a>`)
     .replace(/\[([^\]]+)\]\((\/[^)\s]*)\)/g, '<a href="$2">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
   const out = []; let list = null, para = []

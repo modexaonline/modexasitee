@@ -1,3 +1,4 @@
+import { fixInternalLinksHtml } from '../lib/linkRel'
 import { useEffect, useState } from 'react'
 import { Save, Trash2, Wand2, ClipboardCopy } from 'lucide-react'
 import RichEditor from './RichEditor'
@@ -24,7 +25,7 @@ export default function ManualLang({ kind, en, lang, path, ads, onNotice, onErro
     setBusy('save')
     try {
       const out = {}
-      for (const k of ['title', 'excerpt', 'content', 'seo_title', 'seo_description', 'og_title', 'og_description']) { const v = noDash(String(d[k] || '').trim()); if (v) out[k] = v }
+      for (const k of ['title', 'excerpt', 'content', 'seo_title', 'seo_description', 'og_title', 'og_description']) { let v = noDash(String(d[k] || '').trim()); if (k === 'content') v = fixInternalLinksHtml(v); if (v) out[k] = v }
       const f = cleanFaqs(d.faqs).map(x => ({ q: noDash(x.q), a: noDash(x.a) })); if (f.length) out.faqs = f
       if (isMod) for (const k of ['features', 'requirements', 'install']) { const v = cleanList(d[k]).map(noDash); if (v.length) out[k] = v }
       if (!out.title) throw new Error('Write the title in ' + L.name + ' first.')

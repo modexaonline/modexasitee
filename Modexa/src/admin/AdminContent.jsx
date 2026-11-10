@@ -1,3 +1,4 @@
+import { fixInternalLinksHtml } from '../lib/linkRel'
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Pencil, Copy, Trash2, Eye, EyeOff, ExternalLink, X, Search, FilePlus2, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -93,6 +94,7 @@ export default function AdminContent({ kind, onNotice, onError }) {
     if (kind !== 'posts' && ('password_mode' in payload || 'download_password' in payload)) { payload.download_password = String(payload.download_password || '').trim(); if (payload.download_password && !isPin(payload.download_password)) return onError('The download password must be exactly 4 digits (or leave it empty for an automatic one).'); payload.password_mode = payload.password_mode || 'default' }
     if (kind !== 'posts' && ('unlock_mode' in payload || 'unlock_steps' in payload)) { if (hasBadStep(payload.unlock_steps)) return onError('Every unlock step link must start with https://'); payload.unlock_steps = cleanSteps(payload.unlock_steps); payload.unlock_mode = payload.unlock_mode || 'default'; if (payload.unlock_mode === 'custom' && !payload.unlock_steps.length) return onError('Add at least one unlock step, or choose another unlock option.') }
     setBusy(true)
+    if (typeof payload.content === 'string') payload.content = fixInternalLinksHtml(payload.content)
     let savedId = id, error
     if (id) ({ error } = await supabase.from(cfg.table).update(payload).eq('id', id))
     else { const ins = await supabase.from(cfg.table).insert(payload).select('id').single(); error = ins.error; savedId = ins.data?.id }
@@ -112,9 +114,10 @@ export default function AdminContent({ kind, onNotice, onError }) {
     return <form className="adm" onSubmit={save}>
       <div className="adm-head"><div><h2>{e.id ? `Edit ${cfg.one}` : `New ${cfg.one}`}</h2><p>{e.id ? e.title : 'Write in Compose view, or switch to HTML to edit code and add your ad scripts.'}</p></div>
         <div className="adm-actions"><button type="button" className="adm-btn" onClick={() => { setEditing(null); setLang('en') }}><X size={15}/> Close</button><button className="adm-btn primary" disabled={busy}>{busy ? 'Saving…' : e.status === 'published' ? 'Save & publish' : 'Save'}</button></div></div>
-      {settings.i18n_enabled && e.id && <div className="adm-langtabs" role="tablist" aria-label="Language">
-        {[['en', 'English'], ...LANGS.filter(l => (settings.i18n_langs || []).includes(l.code)).map(l => [l.code, l.name])].map(([c, n]) => <button type="button" key={c} role="tab" aria-selected={lang === c} className={lang === c ? 'on' : ''} onClick={() => setLang(c)}>{n}</button>)}</div>}
-      {settings.i18n_enabled && !e.id && <p className="adm-sub">Save this {cfg.one} once, then language tabs (Indonesian, Spanish and more) appear here so you can write each language by hand.</p>}
+      {e.id && <div className="adm-langtabs" role="tablist" aria-label="Language">
+        {[['en', 'English'], ...LANGS.filter(l => !Array.isArray(settings.i18n_langs) || settings.i18n_langs.includes(l.code)).map(l => [l.code, l.name])].map(([c, n]) => <button type="button" key={c} role="tab" aria-selected={lang === c} className={lang === c ? 'on' : ''} onClick={() => setLang(c)}>{n}</button>)}</div>}
+      {!e.id && <p className="adm-sub"><b>Other languages:</b> save this {cfg.one} once (a draft is fine). Then a tab for every language (Indonesian, Spanish, Arabic and more) appears at the top of this page, and you write each language there by hand.</p>}
+      {e.id && !settings.i18n_enabled && <div className="adm-card" style={{ borderColor: '#f59e0b' }}><b>Languages are OFF on the site.</b> You can still write the translations now, but they go live only after you turn languages on. <button type="button" className="adm-btn sm primary" onClick={async () => { const { error } = await supabase.from('site_settings').update({ i18n_enabled: true }).eq('id', 1); if (error) onError(error.message); else { onNotice('Languages are ON. Reload the admin once.'); } }}>Turn languages on</button></div>}
       {lang !== 'en' && e.id && <ManualLang key={lang + e.id} kind={kind === 'posts' ? 'post' : 'mod'} en={e} lang={lang} path={cfg.href(e)} ads={ads} onNotice={onNotice} onError={onError}/>}
       <div className="adm-split" style={lang !== 'en' && e.id ? { display: 'none' } : undefined}>
         <div className="adm">

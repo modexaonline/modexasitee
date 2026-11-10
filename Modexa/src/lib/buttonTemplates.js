@@ -1,3 +1,4 @@
+import { isInternalHref } from './linkRel'
 import { escapeHtml } from './formatText.js'
 const I = {
   download: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 20h16"/></svg>',
@@ -29,6 +30,10 @@ const REL = 'sponsored nofollow noopener noreferrer'
 // Markup stored inside posts / listings. Clicking it opens the countdown screen (data-wait seconds) and then redirects.
 export function buttonHtml({ tpl = 'dl-green', label, href, wait = 30, img = '', alt = '' }) {
   const t = tplById(tpl), url = escapeHtml(href), w = Math.max(0, Math.min(300, Number(wait) || 0))
+  if (isInternalHref(href)) { // our own page: a normal followed link, no countdown, same tab
+    if (img) return `<p style="text-align:center"><a class="mx-btn-img" href="${url}"><img src="${escapeHtml(img)}" alt="${escapeHtml(alt || label || 'Button')}"></a></p>`
+    return `<p style="text-align:center"><a class="${t.cls}" href="${url}">${t.icon ? I[t.icon] : ''}<span>${escapeHtml(label || t.label)}</span></a></p>`
+  }
   if (img) return `<p style="text-align:center"><a class="mx-btn-img" href="${url}" data-wait="${w}" target="_blank" rel="${REL}"><img src="${escapeHtml(img)}" alt="${escapeHtml(alt || label || 'Button')}"></a></p>`
   const inner = `${t.icon ? I[t.icon] : ''}<span>${escapeHtml(label || t.label)}</span>`
   return `<p style="text-align:center"><a class="${t.cls}" href="${url}" data-wait="${w}" target="_blank" rel="${REL}">${inner}</a></p>`
